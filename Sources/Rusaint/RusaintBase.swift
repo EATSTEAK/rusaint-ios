@@ -170,10 +170,16 @@ fileprivate protocol FfiConverter {
 fileprivate protocol FfiConverterPrimitive: FfiConverter where FfiType == SwiftType { }
 
 extension FfiConverterPrimitive {
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public static func lift(_ value: FfiType) throws -> SwiftType {
         return value
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public static func lower(_ value: SwiftType) -> FfiType {
         return value
     }
@@ -184,6 +190,9 @@ extension FfiConverterPrimitive {
 fileprivate protocol FfiConverterRustBuffer: FfiConverter where FfiType == RustBuffer {}
 
 extension FfiConverterRustBuffer {
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public static func lift(_ buf: RustBuffer) throws -> SwiftType {
         var reader = createReader(data: Data(rustBuffer: buf))
         let value = try read(from: &reader)
@@ -194,6 +203,9 @@ extension FfiConverterRustBuffer {
         return value
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public static func lower(_ value: SwiftType) -> RustBuffer {
           var writer = createWriter()
           write(value, into: &writer)
@@ -384,6 +396,9 @@ fileprivate class UniffiHandleMap<T> {
 // Public interface members begin here.
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
     typealias FfiType = UInt32
     typealias SwiftType = UInt32
@@ -397,6 +412,9 @@ fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterFloat: FfiConverterPrimitive {
     typealias FfiType = Float
     typealias SwiftType = Float
@@ -410,6 +428,9 @@ fileprivate struct FfiConverterFloat: FfiConverterPrimitive {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
@@ -431,6 +452,9 @@ fileprivate struct FfiConverterBool : FfiConverter {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterString: FfiConverter {
     typealias SwiftType = String
     typealias FfiType = RustBuffer
@@ -469,6 +493,9 @@ fileprivate struct FfiConverterString: FfiConverter {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterData: FfiConverterRustBuffer {
     typealias SwiftType = Data
 
@@ -562,6 +589,9 @@ open class LectureCategoryBuilder:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -573,15 +603,21 @@ open class LectureCategoryBuilder:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_fn_clone_lecturecategorybuilder(self.pointer, $0) }
     }
@@ -746,6 +782,9 @@ open func unitedMajor(major: String) -> LectureCategory {
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeLectureCategoryBuilder: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -780,10 +819,16 @@ public struct FfiConverterTypeLectureCategoryBuilder: FfiConverter {
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeLectureCategoryBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> LectureCategoryBuilder {
     return try FfiConverterTypeLectureCategoryBuilder.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeLectureCategoryBuilder_lower(_ value: LectureCategoryBuilder) -> UnsafeMutableRawPointer {
     return FfiConverterTypeLectureCategoryBuilder.lower(value)
 }
@@ -878,6 +923,9 @@ extension ChapelAbsenceRequest: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeChapelAbsenceRequest: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapelAbsenceRequest {
         return
@@ -912,10 +960,16 @@ public struct FfiConverterTypeChapelAbsenceRequest: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeChapelAbsenceRequest_lift(_ buf: RustBuffer) throws -> ChapelAbsenceRequest {
     return try FfiConverterTypeChapelAbsenceRequest.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeChapelAbsenceRequest_lower(_ value: ChapelAbsenceRequest) -> RustBuffer {
     return FfiConverterTypeChapelAbsenceRequest.lower(value)
 }
@@ -998,6 +1052,9 @@ extension ChapelAttendance: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeChapelAttendance: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapelAttendance {
         return
@@ -1028,10 +1085,16 @@ public struct FfiConverterTypeChapelAttendance: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeChapelAttendance_lift(_ buf: RustBuffer) throws -> ChapelAttendance {
     return try FfiConverterTypeChapelAttendance.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeChapelAttendance_lower(_ value: ChapelAttendance) -> RustBuffer {
     return FfiConverterTypeChapelAttendance.lower(value)
 }
@@ -1090,6 +1153,9 @@ extension ChapelInformation: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeChapelInformation: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapelInformation {
         return
@@ -1112,10 +1178,16 @@ public struct FfiConverterTypeChapelInformation: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeChapelInformation_lift(_ buf: RustBuffer) throws -> ChapelInformation {
     return try FfiConverterTypeChapelInformation.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeChapelInformation_lower(_ value: ChapelInformation) -> RustBuffer {
     return FfiConverterTypeChapelInformation.lower(value)
 }
@@ -1252,6 +1324,9 @@ extension ClassGrade: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeClassGrade: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ClassGrade {
         return
@@ -1282,10 +1357,16 @@ public struct FfiConverterTypeClassGrade: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeClassGrade_lift(_ buf: RustBuffer) throws -> ClassGrade {
     return try FfiConverterTypeClassGrade.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeClassGrade_lower(_ value: ClassGrade) -> RustBuffer {
     return FfiConverterTypeClassGrade.lower(value)
 }
@@ -1338,6 +1419,9 @@ extension CourseScheduleInformation: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeCourseScheduleInformation: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CourseScheduleInformation {
         return
@@ -1358,10 +1442,16 @@ public struct FfiConverterTypeCourseScheduleInformation: FfiConverterRustBuffer 
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeCourseScheduleInformation_lift(_ buf: RustBuffer) throws -> CourseScheduleInformation {
     return try FfiConverterTypeCourseScheduleInformation.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeCourseScheduleInformation_lower(_ value: CourseScheduleInformation) -> RustBuffer {
     return FfiConverterTypeCourseScheduleInformation.lower(value)
 }
@@ -1438,6 +1528,9 @@ extension GeneralChapelInformation: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeGeneralChapelInformation: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GeneralChapelInformation {
         return
@@ -1466,10 +1559,16 @@ public struct FfiConverterTypeGeneralChapelInformation: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeGeneralChapelInformation_lift(_ buf: RustBuffer) throws -> GeneralChapelInformation {
     return try FfiConverterTypeGeneralChapelInformation.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeGeneralChapelInformation_lower(_ value: GeneralChapelInformation) -> RustBuffer {
     return FfiConverterTypeGeneralChapelInformation.lower(value)
 }
@@ -1570,6 +1669,9 @@ extension GradeSummary: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeGradeSummary: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GradeSummary {
         return
@@ -1594,10 +1696,16 @@ public struct FfiConverterTypeGradeSummary: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeGradeSummary_lift(_ buf: RustBuffer) throws -> GradeSummary {
     return try FfiConverterTypeGradeSummary.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeGradeSummary_lower(_ value: GradeSummary) -> RustBuffer {
     return FfiConverterTypeGradeSummary.lower(value)
 }
@@ -1668,6 +1776,9 @@ extension GraduationRequirement: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeGraduationRequirement: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GraduationRequirement {
         return
@@ -1694,10 +1805,16 @@ public struct FfiConverterTypeGraduationRequirement: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeGraduationRequirement_lift(_ buf: RustBuffer) throws -> GraduationRequirement {
     return try FfiConverterTypeGraduationRequirement.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeGraduationRequirement_lower(_ value: GraduationRequirement) -> RustBuffer {
     return FfiConverterTypeGraduationRequirement.lower(value)
 }
@@ -1738,6 +1855,9 @@ extension GraduationRequirements: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeGraduationRequirements: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GraduationRequirements {
         return
@@ -1754,10 +1874,16 @@ public struct FfiConverterTypeGraduationRequirements: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeGraduationRequirements_lift(_ buf: RustBuffer) throws -> GraduationRequirements {
     return try FfiConverterTypeGraduationRequirements.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeGraduationRequirements_lower(_ value: GraduationRequirements) -> RustBuffer {
     return FfiConverterTypeGraduationRequirements.lower(value)
 }
@@ -1858,6 +1984,9 @@ extension GraduationStudent: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeGraduationStudent: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GraduationStudent {
         return
@@ -1894,10 +2023,16 @@ public struct FfiConverterTypeGraduationStudent: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeGraduationStudent_lift(_ buf: RustBuffer) throws -> GraduationStudent {
     return try FfiConverterTypeGraduationStudent.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeGraduationStudent_lower(_ value: GraduationStudent) -> RustBuffer {
     return FfiConverterTypeGraduationStudent.lower(value)
 }
@@ -2106,6 +2241,9 @@ extension Lecture: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeLecture: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Lecture {
         return
@@ -2148,10 +2286,16 @@ public struct FfiConverterTypeLecture: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeLecture_lift(_ buf: RustBuffer) throws -> Lecture {
     return try FfiConverterTypeLecture.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeLecture_lower(_ value: Lecture) -> RustBuffer {
     return FfiConverterTypeLecture.lower(value)
 }
@@ -2240,6 +2384,9 @@ extension LectureAssessmentResult: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeLectureAssessmentResult: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LectureAssessmentResult {
         return
@@ -2272,10 +2419,16 @@ public struct FfiConverterTypeLectureAssessmentResult: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeLectureAssessmentResult_lift(_ buf: RustBuffer) throws -> LectureAssessmentResult {
     return try FfiConverterTypeLectureAssessmentResult.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeLectureAssessmentResult_lower(_ value: LectureAssessmentResult) -> RustBuffer {
     return FfiConverterTypeLectureAssessmentResult.lower(value)
 }
@@ -2310,6 +2463,9 @@ extension PersonalCourseSchedule: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypePersonalCourseSchedule: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PersonalCourseSchedule {
         return
@@ -2324,10 +2480,16 @@ public struct FfiConverterTypePersonalCourseSchedule: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypePersonalCourseSchedule_lift(_ buf: RustBuffer) throws -> PersonalCourseSchedule {
     return try FfiConverterTypePersonalCourseSchedule.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypePersonalCourseSchedule_lower(_ value: PersonalCourseSchedule) -> RustBuffer {
     return FfiConverterTypePersonalCourseSchedule.lower(value)
 }
@@ -2512,6 +2674,9 @@ extension SemesterGrade: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeSemesterGrade: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SemesterGrade {
         return
@@ -2550,10 +2715,16 @@ public struct FfiConverterTypeSemesterGrade: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeSemesterGrade_lift(_ buf: RustBuffer) throws -> SemesterGrade {
     return try FfiConverterTypeSemesterGrade.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeSemesterGrade_lower(_ value: SemesterGrade) -> RustBuffer {
     return FfiConverterTypeSemesterGrade.lower(value)
 }
@@ -2624,6 +2795,9 @@ extension StudentAcademicRecord: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentAcademicRecord: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentAcademicRecord {
         return
@@ -2650,10 +2824,16 @@ public struct FfiConverterTypeStudentAcademicRecord: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentAcademicRecord_lift(_ buf: RustBuffer) throws -> StudentAcademicRecord {
     return try FfiConverterTypeStudentAcademicRecord.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentAcademicRecord_lower(_ value: StudentAcademicRecord) -> RustBuffer {
     return FfiConverterTypeStudentAcademicRecord.lower(value)
 }
@@ -2688,6 +2868,9 @@ extension StudentAcademicRecords: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentAcademicRecords: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentAcademicRecords {
         return
@@ -2702,10 +2885,16 @@ public struct FfiConverterTypeStudentAcademicRecords: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentAcademicRecords_lift(_ buf: RustBuffer) throws -> StudentAcademicRecords {
     return try FfiConverterTypeStudentAcademicRecords.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentAcademicRecords_lower(_ value: StudentAcademicRecords) -> RustBuffer {
     return FfiConverterTypeStudentAcademicRecords.lower(value)
 }
@@ -2752,6 +2941,9 @@ extension StudentBankAccount: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentBankAccount: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentBankAccount {
         return
@@ -2770,10 +2962,16 @@ public struct FfiConverterTypeStudentBankAccount: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentBankAccount_lift(_ buf: RustBuffer) throws -> StudentBankAccount {
     return try FfiConverterTypeStudentBankAccount.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentBankAccount_lower(_ value: StudentBankAccount) -> RustBuffer {
     return FfiConverterTypeStudentBankAccount.lower(value)
 }
@@ -2808,6 +3006,9 @@ extension StudentFamily: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentFamily: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentFamily {
         return
@@ -2822,10 +3023,16 @@ public struct FfiConverterTypeStudentFamily: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentFamily_lift(_ buf: RustBuffer) throws -> StudentFamily {
     return try FfiConverterTypeStudentFamily.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentFamily_lower(_ value: StudentFamily) -> RustBuffer {
     return FfiConverterTypeStudentFamily.lower(value)
 }
@@ -2908,6 +3115,9 @@ extension StudentFamilyMember: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentFamilyMember: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentFamilyMember {
         return
@@ -2938,10 +3148,16 @@ public struct FfiConverterTypeStudentFamilyMember: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentFamilyMember_lift(_ buf: RustBuffer) throws -> StudentFamilyMember {
     return try FfiConverterTypeStudentFamilyMember.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentFamilyMember_lower(_ value: StudentFamilyMember) -> RustBuffer {
     return FfiConverterTypeStudentFamilyMember.lower(value)
 }
@@ -2988,6 +3204,9 @@ extension StudentForignStudyInformation: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentForignStudyInformation: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentForignStudyInformation {
         return
@@ -3006,10 +3225,16 @@ public struct FfiConverterTypeStudentForignStudyInformation: FfiConverterRustBuf
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentForignStudyInformation_lift(_ buf: RustBuffer) throws -> StudentForignStudyInformation {
     return try FfiConverterTypeStudentForignStudyInformation.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentForignStudyInformation_lower(_ value: StudentForignStudyInformation) -> RustBuffer {
     return FfiConverterTypeStudentForignStudyInformation.lower(value)
 }
@@ -3098,6 +3323,9 @@ extension StudentGraduation: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentGraduation: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentGraduation {
         return
@@ -3130,10 +3358,16 @@ public struct FfiConverterTypeStudentGraduation: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentGraduation_lift(_ buf: RustBuffer) throws -> StudentGraduation {
     return try FfiConverterTypeStudentGraduation.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentGraduation_lower(_ value: StudentGraduation) -> RustBuffer {
     return FfiConverterTypeStudentGraduation.lower(value)
 }
@@ -3324,6 +3558,9 @@ extension StudentInformation: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentInformation: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentInformation {
         return
@@ -3390,10 +3627,16 @@ public struct FfiConverterTypeStudentInformation: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentInformation_lift(_ buf: RustBuffer) throws -> StudentInformation {
     return try FfiConverterTypeStudentInformation.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentInformation_lower(_ value: StudentInformation) -> RustBuffer {
     return FfiConverterTypeStudentInformation.lower(value)
 }
@@ -3446,6 +3689,9 @@ extension StudentLifelongInformation: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentLifelongInformation: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentLifelongInformation {
         return
@@ -3466,10 +3712,16 @@ public struct FfiConverterTypeStudentLifelongInformation: FfiConverterRustBuffer
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentLifelongInformation_lift(_ buf: RustBuffer) throws -> StudentLifelongInformation {
     return try FfiConverterTypeStudentLifelongInformation.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentLifelongInformation_lower(_ value: StudentLifelongInformation) -> RustBuffer {
     return FfiConverterTypeStudentLifelongInformation.lower(value)
 }
@@ -3522,6 +3774,9 @@ extension StudentQualification: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentQualification: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentQualification {
         return
@@ -3542,10 +3797,16 @@ public struct FfiConverterTypeStudentQualification: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentQualification_lift(_ buf: RustBuffer) throws -> StudentQualification {
     return try FfiConverterTypeStudentQualification.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentQualification_lower(_ value: StudentQualification) -> RustBuffer {
     return FfiConverterTypeStudentQualification.lower(value)
 }
@@ -3658,6 +3919,9 @@ extension StudentReligion: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentReligion: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentReligion {
         return
@@ -3698,10 +3962,16 @@ public struct FfiConverterTypeStudentReligion: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentReligion_lift(_ buf: RustBuffer) throws -> StudentReligion {
     return try FfiConverterTypeStudentReligion.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentReligion_lower(_ value: StudentReligion) -> RustBuffer {
     return FfiConverterTypeStudentReligion.lower(value)
 }
@@ -3748,6 +4018,9 @@ extension StudentResearchBankAccount: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentResearchBankAccount: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentResearchBankAccount {
         return
@@ -3766,10 +4039,16 @@ public struct FfiConverterTypeStudentResearchBankAccount: FfiConverterRustBuffer
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentResearchBankAccount_lift(_ buf: RustBuffer) throws -> StudentResearchBankAccount {
     return try FfiConverterTypeStudentResearchBankAccount.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentResearchBankAccount_lower(_ value: StudentResearchBankAccount) -> RustBuffer {
     return FfiConverterTypeStudentResearchBankAccount.lower(value)
 }
@@ -3822,6 +4101,9 @@ extension StudentTeachingMajorInformation: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentTeachingMajorInformation: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentTeachingMajorInformation {
         return
@@ -3842,10 +4124,16 @@ public struct FfiConverterTypeStudentTeachingMajorInformation: FfiConverterRustB
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentTeachingMajorInformation_lift(_ buf: RustBuffer) throws -> StudentTeachingMajorInformation {
     return try FfiConverterTypeStudentTeachingMajorInformation.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentTeachingMajorInformation_lower(_ value: StudentTeachingMajorInformation) -> RustBuffer {
     return FfiConverterTypeStudentTeachingMajorInformation.lower(value)
 }
@@ -3892,6 +4180,9 @@ extension StudentTeachingPluralMajorInformation: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentTeachingPluralMajorInformation: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentTeachingPluralMajorInformation {
         return
@@ -3910,10 +4201,16 @@ public struct FfiConverterTypeStudentTeachingPluralMajorInformation: FfiConverte
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentTeachingPluralMajorInformation_lift(_ buf: RustBuffer) throws -> StudentTeachingPluralMajorInformation {
     return try FfiConverterTypeStudentTeachingPluralMajorInformation.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentTeachingPluralMajorInformation_lower(_ value: StudentTeachingPluralMajorInformation) -> RustBuffer {
     return FfiConverterTypeStudentTeachingPluralMajorInformation.lower(value)
 }
@@ -3978,6 +4275,9 @@ extension StudentTransferRecord: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentTransferRecord: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentTransferRecord {
         return
@@ -4002,10 +4302,16 @@ public struct FfiConverterTypeStudentTransferRecord: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentTransferRecord_lift(_ buf: RustBuffer) throws -> StudentTransferRecord {
     return try FfiConverterTypeStudentTransferRecord.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentTransferRecord_lower(_ value: StudentTransferRecord) -> RustBuffer {
     return FfiConverterTypeStudentTransferRecord.lower(value)
 }
@@ -4040,6 +4346,9 @@ extension StudentTransferRecords: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentTransferRecords: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentTransferRecords {
         return
@@ -4054,10 +4363,16 @@ public struct FfiConverterTypeStudentTransferRecords: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentTransferRecords_lift(_ buf: RustBuffer) throws -> StudentTransferRecords {
     return try FfiConverterTypeStudentTransferRecords.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentTransferRecords_lower(_ value: StudentTransferRecords) -> RustBuffer {
     return FfiConverterTypeStudentTransferRecords.lower(value)
 }
@@ -4146,6 +4461,9 @@ extension StudentWorkInformation: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentWorkInformation: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentWorkInformation {
         return
@@ -4178,10 +4496,16 @@ public struct FfiConverterTypeStudentWorkInformation: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentWorkInformation_lift(_ buf: RustBuffer) throws -> StudentWorkInformation {
     return try FfiConverterTypeStudentWorkInformation.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentWorkInformation_lower(_ value: StudentWorkInformation) -> RustBuffer {
     return FfiConverterTypeStudentWorkInformation.lower(value)
 }
@@ -4222,6 +4546,9 @@ extension UnsignedIntPair: Equatable, Hashable {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeUnsignedIntPair: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UnsignedIntPair {
         return
@@ -4238,10 +4565,16 @@ public struct FfiConverterTypeUnsignedIntPair: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeUnsignedIntPair_lift(_ buf: RustBuffer) throws -> UnsignedIntPair {
     return try FfiConverterTypeUnsignedIntPair.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeUnsignedIntPair_lower(_ value: UnsignedIntPair) -> RustBuffer {
     return FfiConverterTypeUnsignedIntPair.lower(value)
 }
@@ -4270,6 +4603,9 @@ public enum ClassScore {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeClassScore: FfiConverterRustBuffer {
     typealias SwiftType = ClassScore
 
@@ -4309,10 +4645,16 @@ public struct FfiConverterTypeClassScore: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeClassScore_lift(_ buf: RustBuffer) throws -> ClassScore {
     return try FfiConverterTypeClassScore.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeClassScore_lower(_ value: ClassScore) -> RustBuffer {
     return FfiConverterTypeClassScore.lower(value)
 }
@@ -4354,6 +4696,9 @@ public enum CourseType {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeCourseType: FfiConverterRustBuffer {
     typealias SwiftType = CourseType
 
@@ -4403,10 +4748,16 @@ public struct FfiConverterTypeCourseType: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeCourseType_lift(_ buf: RustBuffer) throws -> CourseType {
     return try FfiConverterTypeCourseType.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeCourseType_lower(_ value: CourseType) -> RustBuffer {
     return FfiConverterTypeCourseType.lower(value)
 }
@@ -4531,6 +4882,9 @@ public enum LectureCategory {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeLectureCategory: FfiConverterRustBuffer {
     typealias SwiftType = LectureCategory
 
@@ -4647,10 +5001,16 @@ public struct FfiConverterTypeLectureCategory: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeLectureCategory_lift(_ buf: RustBuffer) throws -> LectureCategory {
     return try FfiConverterTypeLectureCategory.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeLectureCategory_lower(_ value: LectureCategory) -> RustBuffer {
     return FfiConverterTypeLectureCategory.lower(value)
 }
@@ -4690,6 +5050,9 @@ public enum SemesterType {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeSemesterType: FfiConverterRustBuffer {
     typealias SwiftType = SemesterType
 
@@ -4733,10 +5096,16 @@ public struct FfiConverterTypeSemesterType: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeSemesterType_lift(_ buf: RustBuffer) throws -> SemesterType {
     return try FfiConverterTypeSemesterType.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeSemesterType_lower(_ value: SemesterType) -> RustBuffer {
     return FfiConverterTypeSemesterType.lower(value)
 }
@@ -4786,6 +5155,9 @@ public enum Weekday {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeWeekday: FfiConverterRustBuffer {
     typealias SwiftType = Weekday
 
@@ -4847,10 +5219,16 @@ public struct FfiConverterTypeWeekday: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeWeekday_lift(_ buf: RustBuffer) throws -> Weekday {
     return try FfiConverterTypeWeekday.lift(buf)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeWeekday_lower(_ value: Weekday) -> RustBuffer {
     return FfiConverterTypeWeekday.lower(value)
 }
@@ -4861,6 +5239,9 @@ extension Weekday: Equatable, Hashable {}
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionUInt32: FfiConverterRustBuffer {
     typealias SwiftType = UInt32?
 
@@ -4882,6 +5263,9 @@ fileprivate struct FfiConverterOptionUInt32: FfiConverterRustBuffer {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionFloat: FfiConverterRustBuffer {
     typealias SwiftType = Float?
 
@@ -4903,6 +5287,9 @@ fileprivate struct FfiConverterOptionFloat: FfiConverterRustBuffer {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     typealias SwiftType = String?
 
@@ -4924,6 +5311,9 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeStudentForignStudyInformation: FfiConverterRustBuffer {
     typealias SwiftType = StudentForignStudyInformation?
 
@@ -4945,6 +5335,9 @@ fileprivate struct FfiConverterOptionTypeStudentForignStudyInformation: FfiConve
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeStudentLifelongInformation: FfiConverterRustBuffer {
     typealias SwiftType = StudentLifelongInformation?
 
@@ -4966,6 +5359,9 @@ fileprivate struct FfiConverterOptionTypeStudentLifelongInformation: FfiConverte
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeStudentTeachingMajorInformation: FfiConverterRustBuffer {
     typealias SwiftType = StudentTeachingMajorInformation?
 
@@ -4987,6 +5383,9 @@ fileprivate struct FfiConverterOptionTypeStudentTeachingMajorInformation: FfiCon
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeStudentTeachingPluralMajorInformation: FfiConverterRustBuffer {
     typealias SwiftType = StudentTeachingPluralMajorInformation?
 
@@ -5008,6 +5407,9 @@ fileprivate struct FfiConverterOptionTypeStudentTeachingPluralMajorInformation: 
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionDictionaryStringFloat: FfiConverterRustBuffer {
     typealias SwiftType = [String: Float]?
 
@@ -5029,6 +5431,9 @@ fileprivate struct FfiConverterOptionDictionaryStringFloat: FfiConverterRustBuff
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
     typealias SwiftType = [String]
 
@@ -5051,6 +5456,9 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeChapelAbsenceRequest: FfiConverterRustBuffer {
     typealias SwiftType = [ChapelAbsenceRequest]
 
@@ -5073,6 +5481,9 @@ fileprivate struct FfiConverterSequenceTypeChapelAbsenceRequest: FfiConverterRus
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeChapelAttendance: FfiConverterRustBuffer {
     typealias SwiftType = [ChapelAttendance]
 
@@ -5095,6 +5506,9 @@ fileprivate struct FfiConverterSequenceTypeChapelAttendance: FfiConverterRustBuf
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeCourseScheduleInformation: FfiConverterRustBuffer {
     typealias SwiftType = [CourseScheduleInformation]
 
@@ -5117,6 +5531,9 @@ fileprivate struct FfiConverterSequenceTypeCourseScheduleInformation: FfiConvert
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeStudentAcademicRecord: FfiConverterRustBuffer {
     typealias SwiftType = [StudentAcademicRecord]
 
@@ -5139,6 +5556,9 @@ fileprivate struct FfiConverterSequenceTypeStudentAcademicRecord: FfiConverterRu
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeStudentFamilyMember: FfiConverterRustBuffer {
     typealias SwiftType = [StudentFamilyMember]
 
@@ -5161,6 +5581,9 @@ fileprivate struct FfiConverterSequenceTypeStudentFamilyMember: FfiConverterRust
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeStudentTransferRecord: FfiConverterRustBuffer {
     typealias SwiftType = [StudentTransferRecord]
 
@@ -5183,6 +5606,9 @@ fileprivate struct FfiConverterSequenceTypeStudentTransferRecord: FfiConverterRu
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterDictionaryStringFloat: FfiConverterRustBuffer {
     public static func write(_ value: [String: Float], into buf: inout [UInt8]) {
         let len = Int32(value.count)
@@ -5206,6 +5632,9 @@ fileprivate struct FfiConverterDictionaryStringFloat: FfiConverterRustBuffer {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterDictionaryStringTypeGraduationRequirement: FfiConverterRustBuffer {
     public static func write(_ value: [String: GraduationRequirement], into buf: inout [UInt8]) {
         let len = Int32(value.count)
@@ -5229,6 +5658,9 @@ fileprivate struct FfiConverterDictionaryStringTypeGraduationRequirement: FfiCon
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterDictionaryTypeWeekdaySequenceTypeCourseScheduleInformation: FfiConverterRustBuffer {
     public static func write(_ value: [Weekday: [CourseScheduleInformation]], into buf: inout [UInt8]) {
         let len = Int32(value.count)
@@ -5258,6 +5690,10 @@ fileprivate struct FfiConverterDictionaryTypeWeekdaySequenceTypeCourseScheduleIn
  * is needed because the UDL type name is used in function/method signatures.
  */
 public typealias U32Pair = UnsignedIntPair
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeU32Pair: FfiConverter {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> U32Pair {
         return try FfiConverterTypeUnsignedIntPair.read(from: &buf)
@@ -5277,10 +5713,16 @@ public struct FfiConverterTypeU32Pair: FfiConverter {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeU32Pair_lift(_ value: RustBuffer) throws -> U32Pair {
     return try FfiConverterTypeU32Pair.lift(value)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeU32Pair_lower(_ value: U32Pair) -> RustBuffer {
     return FfiConverterTypeU32Pair.lower(value)
 }

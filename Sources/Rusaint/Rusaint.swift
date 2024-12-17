@@ -170,10 +170,16 @@ fileprivate protocol FfiConverter {
 fileprivate protocol FfiConverterPrimitive: FfiConverter where FfiType == SwiftType { }
 
 extension FfiConverterPrimitive {
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public static func lift(_ value: FfiType) throws -> SwiftType {
         return value
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public static func lower(_ value: SwiftType) -> FfiType {
         return value
     }
@@ -184,6 +190,9 @@ extension FfiConverterPrimitive {
 fileprivate protocol FfiConverterRustBuffer: FfiConverter where FfiType == RustBuffer {}
 
 extension FfiConverterRustBuffer {
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public static func lift(_ buf: RustBuffer) throws -> SwiftType {
         var reader = createReader(data: Data(rustBuffer: buf))
         let value = try read(from: &reader)
@@ -194,6 +203,9 @@ extension FfiConverterRustBuffer {
         return value
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public static func lower(_ value: SwiftType) -> RustBuffer {
           var writer = createWriter()
           write(value, into: &writer)
@@ -384,6 +396,9 @@ fileprivate class UniffiHandleMap<T> {
 // Public interface members begin here.
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
     typealias FfiType = UInt32
     typealias SwiftType = UInt32
@@ -397,6 +412,9 @@ fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterFloat: FfiConverterPrimitive {
     typealias FfiType = Float
     typealias SwiftType = Float
@@ -410,6 +428,9 @@ fileprivate struct FfiConverterFloat: FfiConverterPrimitive {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterBool : FfiConverter {
     typealias FfiType = Int8
     typealias SwiftType = Bool
@@ -431,6 +452,9 @@ fileprivate struct FfiConverterBool : FfiConverter {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterString: FfiConverter {
     typealias SwiftType = String
     typealias FfiType = RustBuffer
@@ -492,6 +516,9 @@ open class ChapelApplication:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -503,15 +530,21 @@ open class ChapelApplication:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_chapelapplication(self.pointer, $0) }
     }
@@ -551,6 +584,9 @@ open func information(year: UInt32, semester: SemesterType)async throws  -> Chap
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeChapelApplication: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -585,10 +621,16 @@ public struct FfiConverterTypeChapelApplication: FfiConverter {
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeChapelApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> ChapelApplication {
     return try FfiConverterTypeChapelApplication.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeChapelApplication_lower(_ value: ChapelApplication) -> UnsafeMutableRawPointer {
     return FfiConverterTypeChapelApplication.lower(value)
 }
@@ -616,6 +658,9 @@ open class ChapelApplicationBuilder:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -627,15 +672,21 @@ open class ChapelApplicationBuilder:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_chapelapplicationbuilder(self.pointer, $0) }
     }
@@ -685,6 +736,9 @@ open func build(session: USaintSession)async throws  -> ChapelApplication {
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeChapelApplicationBuilder: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -719,10 +773,16 @@ public struct FfiConverterTypeChapelApplicationBuilder: FfiConverter {
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeChapelApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> ChapelApplicationBuilder {
     return try FfiConverterTypeChapelApplicationBuilder.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeChapelApplicationBuilder_lower(_ value: ChapelApplicationBuilder) -> UnsafeMutableRawPointer {
     return FfiConverterTypeChapelApplicationBuilder.lower(value)
 }
@@ -773,6 +833,9 @@ open class CourseGradesApplication:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -784,15 +847,21 @@ open class CourseGradesApplication:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_coursegradesapplication(self.pointer, $0) }
     }
@@ -915,6 +984,9 @@ open func semesters(courseType: CourseType)async throws  -> [SemesterGrade] {
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeCourseGradesApplication: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -949,10 +1021,16 @@ public struct FfiConverterTypeCourseGradesApplication: FfiConverter {
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeCourseGradesApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseGradesApplication {
     return try FfiConverterTypeCourseGradesApplication.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeCourseGradesApplication_lower(_ value: CourseGradesApplication) -> UnsafeMutableRawPointer {
     return FfiConverterTypeCourseGradesApplication.lower(value)
 }
@@ -980,6 +1058,9 @@ open class CourseGradesApplicationBuilder:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -991,15 +1072,21 @@ open class CourseGradesApplicationBuilder:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_coursegradesapplicationbuilder(self.pointer, $0) }
     }
@@ -1049,6 +1136,9 @@ open func build(session: USaintSession)async throws  -> CourseGradesApplication 
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeCourseGradesApplicationBuilder: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -1083,10 +1173,16 @@ public struct FfiConverterTypeCourseGradesApplicationBuilder: FfiConverter {
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeCourseGradesApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseGradesApplicationBuilder {
     return try FfiConverterTypeCourseGradesApplicationBuilder.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeCourseGradesApplicationBuilder_lower(_ value: CourseGradesApplicationBuilder) -> UnsafeMutableRawPointer {
     return FfiConverterTypeCourseGradesApplicationBuilder.lower(value)
 }
@@ -1114,6 +1210,9 @@ open class CourseScheduleApplication:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -1125,15 +1224,21 @@ open class CourseScheduleApplication:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_coursescheduleapplication(self.pointer, $0) }
     }
@@ -1173,6 +1278,9 @@ open func findLectures(year: UInt32, period: SemesterType, lectureCategory: Lect
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeCourseScheduleApplication: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -1207,10 +1315,16 @@ public struct FfiConverterTypeCourseScheduleApplication: FfiConverter {
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeCourseScheduleApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseScheduleApplication {
     return try FfiConverterTypeCourseScheduleApplication.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeCourseScheduleApplication_lower(_ value: CourseScheduleApplication) -> UnsafeMutableRawPointer {
     return FfiConverterTypeCourseScheduleApplication.lower(value)
 }
@@ -1238,6 +1352,9 @@ open class CourseScheduleApplicationBuilder:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -1249,15 +1366,21 @@ open class CourseScheduleApplicationBuilder:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_coursescheduleapplicationbuilder(self.pointer, $0) }
     }
@@ -1307,6 +1430,9 @@ open func build(session: USaintSession)async throws  -> CourseScheduleApplicatio
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeCourseScheduleApplicationBuilder: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -1341,10 +1467,16 @@ public struct FfiConverterTypeCourseScheduleApplicationBuilder: FfiConverter {
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeCourseScheduleApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseScheduleApplicationBuilder {
     return try FfiConverterTypeCourseScheduleApplicationBuilder.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeCourseScheduleApplicationBuilder_lower(_ value: CourseScheduleApplicationBuilder) -> UnsafeMutableRawPointer {
     return FfiConverterTypeCourseScheduleApplicationBuilder.lower(value)
 }
@@ -1377,6 +1509,9 @@ open class GraduationRequirementsApplication:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -1388,15 +1523,21 @@ open class GraduationRequirementsApplication:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_graduationrequirementsapplication(self.pointer, $0) }
     }
@@ -1456,6 +1597,9 @@ open func studentInfo()async throws  -> GraduationStudent {
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeGraduationRequirementsApplication: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -1490,10 +1634,16 @@ public struct FfiConverterTypeGraduationRequirementsApplication: FfiConverter {
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeGraduationRequirementsApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> GraduationRequirementsApplication {
     return try FfiConverterTypeGraduationRequirementsApplication.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeGraduationRequirementsApplication_lower(_ value: GraduationRequirementsApplication) -> UnsafeMutableRawPointer {
     return FfiConverterTypeGraduationRequirementsApplication.lower(value)
 }
@@ -1521,6 +1671,9 @@ open class GraduationRequirementsApplicationBuilder:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -1532,15 +1685,21 @@ open class GraduationRequirementsApplicationBuilder:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_graduationrequirementsapplicationbuilder(self.pointer, $0) }
     }
@@ -1590,6 +1749,9 @@ open func build(session: USaintSession)async throws  -> GraduationRequirementsAp
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeGraduationRequirementsApplicationBuilder: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -1624,10 +1786,16 @@ public struct FfiConverterTypeGraduationRequirementsApplicationBuilder: FfiConve
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeGraduationRequirementsApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> GraduationRequirementsApplicationBuilder {
     return try FfiConverterTypeGraduationRequirementsApplicationBuilder.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeGraduationRequirementsApplicationBuilder_lower(_ value: GraduationRequirementsApplicationBuilder) -> UnsafeMutableRawPointer {
     return FfiConverterTypeGraduationRequirementsApplicationBuilder.lower(value)
 }
@@ -1655,6 +1823,9 @@ open class LectureAssessmentApplication:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -1666,15 +1837,21 @@ open class LectureAssessmentApplication:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_lectureassessmentapplication(self.pointer, $0) }
     }
@@ -1714,6 +1891,9 @@ open func findAssessments(year: UInt32, period: SemesterType, lectureName: Strin
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeLectureAssessmentApplication: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -1748,10 +1928,16 @@ public struct FfiConverterTypeLectureAssessmentApplication: FfiConverter {
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeLectureAssessmentApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> LectureAssessmentApplication {
     return try FfiConverterTypeLectureAssessmentApplication.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeLectureAssessmentApplication_lower(_ value: LectureAssessmentApplication) -> UnsafeMutableRawPointer {
     return FfiConverterTypeLectureAssessmentApplication.lower(value)
 }
@@ -1779,6 +1965,9 @@ open class LectureAssessmentApplicationBuilder:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -1790,15 +1979,21 @@ open class LectureAssessmentApplicationBuilder:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_lectureassessmentapplicationbuilder(self.pointer, $0) }
     }
@@ -1848,6 +2043,9 @@ open func build(session: USaintSession)async throws  -> LectureAssessmentApplica
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeLectureAssessmentApplicationBuilder: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -1882,10 +2080,16 @@ public struct FfiConverterTypeLectureAssessmentApplicationBuilder: FfiConverter 
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeLectureAssessmentApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> LectureAssessmentApplicationBuilder {
     return try FfiConverterTypeLectureAssessmentApplicationBuilder.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeLectureAssessmentApplicationBuilder_lower(_ value: LectureAssessmentApplicationBuilder) -> UnsafeMutableRawPointer {
     return FfiConverterTypeLectureAssessmentApplicationBuilder.lower(value)
 }
@@ -1913,6 +2117,9 @@ open class PersonalCourseScheduleApplication:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -1924,15 +2131,21 @@ open class PersonalCourseScheduleApplication:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_personalcoursescheduleapplication(self.pointer, $0) }
     }
@@ -1972,6 +2185,9 @@ open func schedule(year: UInt32, semester: SemesterType)async throws  -> Persona
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypePersonalCourseScheduleApplication: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -2006,10 +2222,16 @@ public struct FfiConverterTypePersonalCourseScheduleApplication: FfiConverter {
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypePersonalCourseScheduleApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> PersonalCourseScheduleApplication {
     return try FfiConverterTypePersonalCourseScheduleApplication.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypePersonalCourseScheduleApplication_lower(_ value: PersonalCourseScheduleApplication) -> UnsafeMutableRawPointer {
     return FfiConverterTypePersonalCourseScheduleApplication.lower(value)
 }
@@ -2037,6 +2259,9 @@ open class PersonalCourseScheduleApplicationBuilder:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -2048,15 +2273,21 @@ open class PersonalCourseScheduleApplicationBuilder:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_personalcoursescheduleapplicationbuilder(self.pointer, $0) }
     }
@@ -2106,6 +2337,9 @@ open func build(session: USaintSession)async throws  -> PersonalCourseScheduleAp
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypePersonalCourseScheduleApplicationBuilder: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -2140,10 +2374,16 @@ public struct FfiConverterTypePersonalCourseScheduleApplicationBuilder: FfiConve
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypePersonalCourseScheduleApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> PersonalCourseScheduleApplicationBuilder {
     return try FfiConverterTypePersonalCourseScheduleApplicationBuilder.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypePersonalCourseScheduleApplicationBuilder_lower(_ value: PersonalCourseScheduleApplicationBuilder) -> UnsafeMutableRawPointer {
     return FfiConverterTypePersonalCourseScheduleApplicationBuilder.lower(value)
 }
@@ -2216,6 +2456,9 @@ open class StudentInformationApplication:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -2227,15 +2470,21 @@ open class StudentInformationApplication:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_studentinformationapplication(self.pointer, $0) }
     }
@@ -2455,6 +2704,9 @@ open func work()async throws  -> StudentWorkInformation {
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentInformationApplication: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -2489,10 +2741,16 @@ public struct FfiConverterTypeStudentInformationApplication: FfiConverter {
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentInformationApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> StudentInformationApplication {
     return try FfiConverterTypeStudentInformationApplication.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentInformationApplication_lower(_ value: StudentInformationApplication) -> UnsafeMutableRawPointer {
     return FfiConverterTypeStudentInformationApplication.lower(value)
 }
@@ -2520,6 +2778,9 @@ open class StudentInformationApplicationBuilder:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -2531,15 +2792,21 @@ open class StudentInformationApplicationBuilder:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_studentinformationapplicationbuilder(self.pointer, $0) }
     }
@@ -2589,6 +2856,9 @@ open func build(session: USaintSession)async throws  -> StudentInformationApplic
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeStudentInformationApplicationBuilder: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -2623,10 +2893,16 @@ public struct FfiConverterTypeStudentInformationApplicationBuilder: FfiConverter
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentInformationApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> StudentInformationApplicationBuilder {
     return try FfiConverterTypeStudentInformationApplicationBuilder.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeStudentInformationApplicationBuilder_lower(_ value: StudentInformationApplicationBuilder) -> UnsafeMutableRawPointer {
     return FfiConverterTypeStudentInformationApplicationBuilder.lower(value)
 }
@@ -2651,6 +2927,9 @@ open class USaintSession:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -2662,15 +2941,21 @@ open class USaintSession:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_usaintsession(self.pointer, $0) }
     }
@@ -2690,6 +2975,9 @@ open class USaintSession:
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeUSaintSession: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -2724,10 +3012,16 @@ public struct FfiConverterTypeUSaintSession: FfiConverter {
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeUSaintSession_lift(_ pointer: UnsafeMutableRawPointer) throws -> USaintSession {
     return try FfiConverterTypeUSaintSession.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeUSaintSession_lower(_ value: USaintSession) -> UnsafeMutableRawPointer {
     return FfiConverterTypeUSaintSession.lower(value)
 }
@@ -2781,6 +3075,9 @@ open class USaintSessionBuilder:
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public struct NoPointer {
         public init() {}
     }
@@ -2792,15 +3089,21 @@ open class USaintSessionBuilder:
         self.pointer = pointer
     }
 
-    /// This constructor can be used to instantiate a fake object.
-    /// - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
-    ///
-    /// - Warning:
-    ///     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public init(noPointer: NoPointer) {
         self.pointer = nil
     }
 
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     public func uniffiClonePointer() -> UnsafeMutableRawPointer {
         return try! rustCall { uniffi_rusaint_ffi_fn_clone_usaintsessionbuilder(self.pointer, $0) }
     }
@@ -2896,6 +3199,9 @@ open func withToken(id: String, token: String)async throws  -> USaintSession {
 
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeUSaintSessionBuilder: FfiConverter {
 
     typealias FfiType = UnsafeMutableRawPointer
@@ -2930,10 +3236,16 @@ public struct FfiConverterTypeUSaintSessionBuilder: FfiConverter {
 
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeUSaintSessionBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> USaintSessionBuilder {
     return try FfiConverterTypeUSaintSessionBuilder.lift(pointer)
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public func FfiConverterTypeUSaintSessionBuilder_lower(_ value: USaintSessionBuilder) -> UnsafeMutableRawPointer {
     return FfiConverterTypeUSaintSessionBuilder.lower(value)
 }
@@ -2951,6 +3263,9 @@ public enum RusaintError {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 public struct FfiConverterTypeRusaintError: FfiConverterRustBuffer {
     typealias SwiftType = RusaintError
 
@@ -2993,6 +3308,9 @@ extension RusaintError: Foundation.LocalizedError {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionUInt32: FfiConverterRustBuffer {
     typealias SwiftType = UInt32?
 
@@ -3014,6 +3332,9 @@ fileprivate struct FfiConverterOptionUInt32: FfiConverterRustBuffer {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     typealias SwiftType = String?
 
@@ -3035,6 +3356,9 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeClassGrade: FfiConverterRustBuffer {
     typealias SwiftType = [ClassGrade]
 
@@ -3057,6 +3381,9 @@ fileprivate struct FfiConverterSequenceTypeClassGrade: FfiConverterRustBuffer {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeLecture: FfiConverterRustBuffer {
     typealias SwiftType = [Lecture]
 
@@ -3079,6 +3406,9 @@ fileprivate struct FfiConverterSequenceTypeLecture: FfiConverterRustBuffer {
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeLectureAssessmentResult: FfiConverterRustBuffer {
     typealias SwiftType = [LectureAssessmentResult]
 
@@ -3101,6 +3431,9 @@ fileprivate struct FfiConverterSequenceTypeLectureAssessmentResult: FfiConverter
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeSemesterGrade: FfiConverterRustBuffer {
     typealias SwiftType = [SemesterGrade]
 
@@ -3123,6 +3456,9 @@ fileprivate struct FfiConverterSequenceTypeSemesterGrade: FfiConverterRustBuffer
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterDictionaryStringFloat: FfiConverterRustBuffer {
     public static func write(_ value: [String: Float], into buf: inout [UInt8]) {
         let len = Int32(value.count)
