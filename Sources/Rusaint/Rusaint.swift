@@ -803,7 +803,7 @@ public protocol CourseGradesApplicationProtocol : AnyObject {
     /**
      * 주어진 수업의 상세 성적 정보를 가져옵니다.
      */
-    func classDetail(courseType: CourseType, year: String, semester: SemesterType, code: String) async throws  -> [String: Float]
+    func classDetail(courseType: CourseType, year: UInt32, semester: SemesterType, code: String) async throws  -> [String: Float]
     
     /**
      * 주어진 학기의 수업별 성적을 가져옵니다. `include_details`가 `true`인 경우 수업의 상세 성적도 가져옵니다.
@@ -811,7 +811,7 @@ public protocol CourseGradesApplicationProtocol : AnyObject {
      *
      * 수업 성적을 가져온 이후 상세 성적 또한 가져오려면 `[class_detail()]`함수를 이용하십시오.
      */
-    func classes(courseType: CourseType, year: String, semester: SemesterType, includeDetails: Bool) async throws  -> [ClassGrade]
+    func classes(courseType: CourseType, year: UInt32, semester: SemesterType, includeDetails: Bool) async throws  -> [ClassGrade]
     
     /**
      * 전체 학기의 학적부 평점 정보를 가져옵니다.
@@ -901,13 +901,13 @@ open func certificatedSummary(courseType: CourseType)async throws  -> GradeSumma
     /**
      * 주어진 수업의 상세 성적 정보를 가져옵니다.
      */
-open func classDetail(courseType: CourseType, year: String, semester: SemesterType, code: String)async throws  -> [String: Float] {
+open func classDetail(courseType: CourseType, year: UInt32, semester: SemesterType, code: String)async throws  -> [String: Float] {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursegradesapplication_class_detail(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeCourseType_lower(courseType),FfiConverterString.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterString.lower(code)
+                    FfiConverterTypeCourseType_lower(courseType),FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterString.lower(code)
                 )
             },
             pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
@@ -924,13 +924,13 @@ open func classDetail(courseType: CourseType, year: String, semester: SemesterTy
      *
      * 수업 성적을 가져온 이후 상세 성적 또한 가져오려면 `[class_detail()]`함수를 이용하십시오.
      */
-open func classes(courseType: CourseType, year: String, semester: SemesterType, includeDetails: Bool)async throws  -> [ClassGrade] {
+open func classes(courseType: CourseType, year: UInt32, semester: SemesterType, includeDetails: Bool)async throws  -> [ClassGrade] {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursegradesapplication_classes(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeCourseType_lower(courseType),FfiConverterString.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterBool.lower(includeDetails)
+                    FfiConverterTypeCourseType_lower(courseType),FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterBool.lower(includeDetails)
                 )
             },
             pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
@@ -3596,10 +3596,10 @@ private var initializationResult: InitializationResult = {
     if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_certificated_summary() != 8880) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_class_detail() != 21134) {
+    if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_class_detail() != 3843) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_classes() != 47779) {
+    if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_classes() != 12879) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_recorded_summary() != 3787) {
