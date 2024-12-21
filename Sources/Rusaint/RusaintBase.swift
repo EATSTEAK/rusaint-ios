@@ -4600,6 +4600,10 @@ public enum ClassScore {
      */
     case score(UInt32
     )
+    /**
+     * 성적 없음
+     */
+    case empty
 }
 
 
@@ -4619,6 +4623,8 @@ public struct FfiConverterTypeClassScore: FfiConverterRustBuffer {
         
         case 3: return .score(try FfiConverterUInt32.read(from: &buf)
         )
+        
+        case 4: return .empty
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -4640,6 +4646,10 @@ public struct FfiConverterTypeClassScore: FfiConverterRustBuffer {
             writeInt(&buf, Int32(3))
             FfiConverterUInt32.write(v1, into: &buf)
             
+        
+        case .empty:
+            writeInt(&buf, Int32(4))
+        
         }
     }
 }
