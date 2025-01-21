@@ -1,7 +1,0 @@
-module RusaintBaseFFI {
-    header "RusaintBaseFFI.h"
-    export *
-}module RusaintFFI {
-    header "RusaintFFI.h"
-    export *
-}
