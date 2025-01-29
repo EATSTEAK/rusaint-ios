@@ -502,6 +502,12 @@ fileprivate struct FfiConverterString: FfiConverter {
 public protocol ChapelApplicationProtocol : AnyObject {
     
     /**
+     * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
+     * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
+     */
+    func getSelectedSemester() async throws  -> YearSemester
+    
+    /**
      * 해당 학기의 채플 정보를 가져옵니다.
      */
     func information(year: UInt32, semester: SemesterType) async throws  -> ChapelInformation
@@ -560,6 +566,27 @@ open class ChapelApplication:
 
     
 
+    
+    /**
+     * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
+     * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
+     */
+open func getSelectedSemester()async throws  -> YearSemester {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_chapelapplication_get_selected_semester(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeYearSemester.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
     
     /**
      * 해당 학기의 채플 정보를 가져옵니다.
@@ -814,6 +841,12 @@ public protocol CourseGradesApplicationProtocol : AnyObject {
     func classes(courseType: CourseType, year: UInt32, semester: SemesterType, includeDetails: Bool) async throws  -> [ClassGrade]
     
     /**
+     * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
+     * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
+     */
+    func getSelectedSemester() async throws  -> YearSemester
+    
+    /**
      * 전체 학기의 학적부 평점 정보를 가져옵니다.
      */
     func recordedSummary(courseType: CourseType) async throws  -> GradeSummary
@@ -937,6 +970,27 @@ open func classes(courseType: CourseType, year: UInt32, semester: SemesterType, 
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeClassGrade.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+    /**
+     * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
+     * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
+     */
+open func getSelectedSemester()async throws  -> YearSemester {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursegradesapplication_get_selected_semester(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeYearSemester.lift,
             errorHandler: FfiConverterTypeRusaintError.lift
         )
 }
@@ -1196,9 +1250,65 @@ public func FfiConverterTypeCourseGradesApplicationBuilder_lower(_ value: Course
 public protocol CourseScheduleApplicationProtocol : AnyObject {
     
     /**
+     * 선택한 학기의 채플 과목 분류 목록을 가져옵니다.
+     */
+    func chapelCategories(year: UInt32, semester: SemesterType) async throws  -> [String]
+    
+    /**
+     * 선택한 학기 기준 단과대 목록을 가져옵니다.
+     */
+    func collages(year: UInt32, semester: SemesterType) async throws  -> [String]
+    
+    /**
+     * 선택한 학기의 연계전공 목록을 가져옵니다.
+     */
+    func connectedMajors(year: UInt32, semester: SemesterType) async throws  -> [String]
+    
+    /**
+     * 선택한 학기 기준 주어진 단과대의 학과(부) 목록을 가져옵니다.
+     */
+    func departments(year: UInt32, semester: SemesterType, collage: String) async throws  -> [String]
+    
+    /**
      * 학기, 학년도, 강의 분류를 통해 강의를 찾습니다.
      */
-    func findLectures(year: UInt32, period: SemesterType, lectureCategory: LectureCategory) async throws  -> [Lecture]
+    func findLectures(year: UInt32, semester: SemesterType, lectureCategory: LectureCategory) async throws  -> [Lecture]
+    
+    /**
+     * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
+     * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
+     */
+    func getSelectedSemester() async throws  -> YearSemester
+    
+    /**
+     * 선택한 학기의 대학원 단과대학 목록을 가져옵니다.
+     */
+    func graduatedCollages(year: UInt32, semester: SemesterType) async throws  -> [String]
+    
+    /**
+     * 선택한 학기의 주어진 대학원 단과대의 학과 목록을 가져옵니다.
+     */
+    func graduatedDepartments(year: UInt32, semester: SemesterType, collage: String) async throws  -> [String]
+    
+    /**
+     * 선택한 학과(부)의 전공 목록을 가져옵니다.
+     */
+    func majors(year: UInt32, semester: SemesterType, collage: String, department: String) async throws  -> [String]
+    
+    /**
+     * 선택한 학기의 교양선택 분야 목록을 가져옵니다.
+     */
+    func optionalElectiveCategories(year: UInt32, semester: SemesterType) async throws  -> [String]
+    
+    /**
+     * 선택한 학기의 교양필수 과목명 목록을 가져옵니다.
+     */
+    func requiredElectives(year: UInt32, semester: SemesterType) async throws  -> [String]
+    
+    /**
+     * 선택한 학기의 융합전공 목록을 가져옵니다.
+     */
+    func unitedMajors(year: UInt32, semester: SemesterType) async throws  -> [String]
     
 }
 
@@ -1256,21 +1366,242 @@ open class CourseScheduleApplication:
 
     
     /**
+     * 선택한 학기의 채플 과목 분류 목록을 가져옵니다.
+     */
+open func chapelCategories(year: UInt32, semester: SemesterType)async throws  -> [String] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_chapel_categories(
+                    self.uniffiClonePointer(),
+                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+    /**
+     * 선택한 학기 기준 단과대 목록을 가져옵니다.
+     */
+open func collages(year: UInt32, semester: SemesterType)async throws  -> [String] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_collages(
+                    self.uniffiClonePointer(),
+                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+    /**
+     * 선택한 학기의 연계전공 목록을 가져옵니다.
+     */
+open func connectedMajors(year: UInt32, semester: SemesterType)async throws  -> [String] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_connected_majors(
+                    self.uniffiClonePointer(),
+                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+    /**
+     * 선택한 학기 기준 주어진 단과대의 학과(부) 목록을 가져옵니다.
+     */
+open func departments(year: UInt32, semester: SemesterType, collage: String)async throws  -> [String] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_departments(
+                    self.uniffiClonePointer(),
+                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterString.lower(collage)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+    /**
      * 학기, 학년도, 강의 분류를 통해 강의를 찾습니다.
      */
-open func findLectures(year: UInt32, period: SemesterType, lectureCategory: LectureCategory)async throws  -> [Lecture] {
+open func findLectures(year: UInt32, semester: SemesterType, lectureCategory: LectureCategory)async throws  -> [Lecture] {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplication_find_lectures(
                     self.uniffiClonePointer(),
-                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(period),FfiConverterTypeLectureCategory_lower(lectureCategory)
+                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterTypeLectureCategory_lower(lectureCategory)
                 )
             },
             pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeLecture.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+    /**
+     * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
+     * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
+     */
+open func getSelectedSemester()async throws  -> YearSemester {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_get_selected_semester(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeYearSemester.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+    /**
+     * 선택한 학기의 대학원 단과대학 목록을 가져옵니다.
+     */
+open func graduatedCollages(year: UInt32, semester: SemesterType)async throws  -> [String] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_graduated_collages(
+                    self.uniffiClonePointer(),
+                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+    /**
+     * 선택한 학기의 주어진 대학원 단과대의 학과 목록을 가져옵니다.
+     */
+open func graduatedDepartments(year: UInt32, semester: SemesterType, collage: String)async throws  -> [String] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_graduated_departments(
+                    self.uniffiClonePointer(),
+                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterString.lower(collage)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+    /**
+     * 선택한 학과(부)의 전공 목록을 가져옵니다.
+     */
+open func majors(year: UInt32, semester: SemesterType, collage: String, department: String)async throws  -> [String] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_majors(
+                    self.uniffiClonePointer(),
+                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterString.lower(collage),FfiConverterString.lower(department)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+    /**
+     * 선택한 학기의 교양선택 분야 목록을 가져옵니다.
+     */
+open func optionalElectiveCategories(year: UInt32, semester: SemesterType)async throws  -> [String] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_optional_elective_categories(
+                    self.uniffiClonePointer(),
+                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+    /**
+     * 선택한 학기의 교양필수 과목명 목록을 가져옵니다.
+     */
+open func requiredElectives(year: UInt32, semester: SemesterType)async throws  -> [String] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_required_electives(
+                    self.uniffiClonePointer(),
+                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+    /**
+     * 선택한 학기의 융합전공 목록을 가져옵니다.
+     */
+open func unitedMajors(year: UInt32, semester: SemesterType)async throws  -> [String] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_united_majors(
+                    self.uniffiClonePointer(),
+                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceString.lift,
             errorHandler: FfiConverterTypeRusaintError.lift
         )
 }
@@ -1811,7 +2142,13 @@ public protocol LectureAssessmentApplicationProtocol : AnyObject {
     /**
      * 검색 조건에 맞는 강의평가 정보를 가져옵니다.
      */
-    func findAssessments(year: UInt32, period: SemesterType, lectureName: String?, lectureCode: UInt32?, professorName: String?) async throws  -> [LectureAssessmentResult]
+    func findAssessments(year: UInt32, semester: SemesterType, lectureName: String?, lectureCode: UInt32?, professorName: String?) async throws  -> [LectureAssessmentResult]
+    
+    /**
+     * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
+     * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
+     */
+    func getSelectedSemester() async throws  -> YearSemester
     
 }
 
@@ -1871,19 +2208,40 @@ open class LectureAssessmentApplication:
     /**
      * 검색 조건에 맞는 강의평가 정보를 가져옵니다.
      */
-open func findAssessments(year: UInt32, period: SemesterType, lectureName: String? = nil, lectureCode: UInt32? = nil, professorName: String? = nil)async throws  -> [LectureAssessmentResult] {
+open func findAssessments(year: UInt32, semester: SemesterType, lectureName: String? = nil, lectureCode: UInt32? = nil, professorName: String? = nil)async throws  -> [LectureAssessmentResult] {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_lectureassessmentapplication_find_assessments(
                     self.uniffiClonePointer(),
-                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(period),FfiConverterOptionString.lower(lectureName),FfiConverterOptionUInt32.lower(lectureCode),FfiConverterOptionString.lower(professorName)
+                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterOptionString.lower(lectureName),FfiConverterOptionUInt32.lower(lectureCode),FfiConverterOptionString.lower(professorName)
                 )
             },
             pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeLectureAssessmentResult.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+    /**
+     * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
+     * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
+     */
+open func getSelectedSemester()async throws  -> YearSemester {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_lectureassessmentapplication_get_selected_semester(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeYearSemester.lift,
             errorHandler: FfiConverterTypeRusaintError.lift
         )
 }
@@ -2103,6 +2461,12 @@ public func FfiConverterTypeLectureAssessmentApplicationBuilder_lower(_ value: L
 public protocol PersonalCourseScheduleApplicationProtocol : AnyObject {
     
     /**
+     * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
+     * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
+     */
+    func getSelectedSemester() async throws  -> YearSemester
+    
+    /**
      * 해당 학기의 시간표 정보를 가져옵니다.
      */
     func schedule(year: UInt32, semester: SemesterType) async throws  -> PersonalCourseSchedule
@@ -2161,6 +2525,27 @@ open class PersonalCourseScheduleApplication:
 
     
 
+    
+    /**
+     * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
+     * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
+     */
+open func getSelectedSemester()async throws  -> YearSemester {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_personalcoursescheduleapplication_get_selected_semester(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeYearSemester.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
     
     /**
      * 해당 학기의 시간표 정보를 가져옵니다.
@@ -2386,6 +2771,300 @@ public func FfiConverterTypePersonalCourseScheduleApplicationBuilder_lift(_ poin
 #endif
 public func FfiConverterTypePersonalCourseScheduleApplicationBuilder_lower(_ value: PersonalCourseScheduleApplicationBuilder) -> UnsafeMutableRawPointer {
     return FfiConverterTypePersonalCourseScheduleApplicationBuilder.lower(value)
+}
+
+
+
+
+/**
+ * [장학금수혜내역조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW7530n)
+ */
+public protocol ScholarshipsApplicationProtocol : AnyObject {
+    
+    /**
+     * 장학금 수혜 내역을 가져옵니다.
+     */
+    func scholarships() async throws  -> [Scholarship]
+    
+}
+
+/**
+ * [장학금수혜내역조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW7530n)
+ */
+open class ScholarshipsApplication:
+    ScholarshipsApplicationProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_scholarshipsapplication(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_rusaint_ffi_fn_free_scholarshipsapplication(pointer, $0) }
+    }
+
+    
+
+    
+    /**
+     * 장학금 수혜 내역을 가져옵니다.
+     */
+open func scholarships()async throws  -> [Scholarship] {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_scholarshipsapplication_scholarships(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeScholarship.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScholarshipsApplication: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = ScholarshipsApplication
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> ScholarshipsApplication {
+        return ScholarshipsApplication(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: ScholarshipsApplication) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScholarshipsApplication {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: ScholarshipsApplication, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScholarshipsApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> ScholarshipsApplication {
+    return try FfiConverterTypeScholarshipsApplication.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScholarshipsApplication_lower(_ value: ScholarshipsApplication) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeScholarshipsApplication.lower(value)
+}
+
+
+
+
+/**
+ * [`ScholarshipsApplication`] 생성을 위한 빌더
+ */
+public protocol ScholarshipsApplicationBuilderProtocol : AnyObject {
+    
+    /**
+     * 세션과 함께 [`ScholarshipsApplication`]을 만듭니다.
+     */
+    func build(session: USaintSession) async throws  -> ScholarshipsApplication
+    
+}
+
+/**
+ * [`ScholarshipsApplication`] 생성을 위한 빌더
+ */
+open class ScholarshipsApplicationBuilder:
+    ScholarshipsApplicationBuilderProtocol {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_scholarshipsapplicationbuilder(self.pointer, $0) }
+    }
+    /**
+     * 새로운 [`ScholarshipsApplicationBuilder`]를 만듭니다.
+     */
+public convenience init() {
+    let pointer =
+        try! rustCall() {
+    uniffi_rusaint_ffi_fn_constructor_scholarshipsapplicationbuilder_new($0
+    )
+}
+    self.init(unsafeFromRawPointer: pointer)
+}
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_rusaint_ffi_fn_free_scholarshipsapplicationbuilder(pointer, $0) }
+    }
+
+    
+
+    
+    /**
+     * 세션과 함께 [`ScholarshipsApplication`]을 만듭니다.
+     */
+open func build(session: USaintSession)async throws  -> ScholarshipsApplication {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_scholarshipsapplicationbuilder_build(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeUSaintSession.lower(session)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeScholarshipsApplication.lift,
+            errorHandler: FfiConverterTypeRusaintError.lift
+        )
+}
+    
+
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScholarshipsApplicationBuilder: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = ScholarshipsApplicationBuilder
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> ScholarshipsApplicationBuilder {
+        return ScholarshipsApplicationBuilder(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: ScholarshipsApplicationBuilder) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScholarshipsApplicationBuilder {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: ScholarshipsApplicationBuilder, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScholarshipsApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> ScholarshipsApplicationBuilder {
+    return try FfiConverterTypeScholarshipsApplicationBuilder.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScholarshipsApplicationBuilder_lower(_ value: ScholarshipsApplicationBuilder) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeScholarshipsApplicationBuilder.lower(value)
 }
 
 
@@ -3251,6 +3930,72 @@ public func FfiConverterTypeUSaintSessionBuilder_lower(_ value: USaintSessionBui
 }
 
 
+public struct YearSemester {
+    public let year: UInt32
+    public let semester: SemesterType
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(year: UInt32, semester: SemesterType) {
+        self.year = year
+        self.semester = semester
+    }
+}
+
+
+
+extension YearSemester: Equatable, Hashable {
+    public static func ==(lhs: YearSemester, rhs: YearSemester) -> Bool {
+        if lhs.year != rhs.year {
+            return false
+        }
+        if lhs.semester != rhs.semester {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(year)
+        hasher.combine(semester)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeYearSemester: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> YearSemester {
+        return
+            try YearSemester(
+                year: FfiConverterUInt32.read(from: &buf), 
+                semester: FfiConverterTypeSemesterType.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: YearSemester, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.year, into: &buf)
+        FfiConverterTypeSemesterType.write(value.semester, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeYearSemester_lift(_ buf: RustBuffer) throws -> YearSemester {
+    return try FfiConverterTypeYearSemester.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeYearSemester_lower(_ value: YearSemester) -> RustBuffer {
+    return FfiConverterTypeYearSemester.lower(value)
+}
+
+
 /**
  * Rusaint에서 반환하는 기본 오류
  */
@@ -3359,6 +4104,31 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
+    typealias SwiftType = [String]
+
+    public static func write(_ value: [String], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterString.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [String] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [String]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeClassGrade: FfiConverterRustBuffer {
     typealias SwiftType = [ClassGrade]
 
@@ -3434,6 +4204,31 @@ fileprivate struct FfiConverterSequenceTypeLectureAssessmentResult: FfiConverter
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeScholarship: FfiConverterRustBuffer {
+    typealias SwiftType = [Scholarship]
+
+    public static func write(_ value: [Scholarship], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeScholarship.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [Scholarship] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [Scholarship]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeScholarship.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeSemesterGrade: FfiConverterRustBuffer {
     typealias SwiftType = [SemesterGrade]
 
@@ -3481,6 +4276,8 @@ fileprivate struct FfiConverterDictionaryStringFloat: FfiConverterRustBuffer {
         return dict
     }
 }
+
+
 
 
 
@@ -3587,6 +4384,9 @@ private var initializationResult: InitializationResult = {
     if bindings_contract_version != scaffolding_contract_version {
         return InitializationResult.contractVersionMismatch
     }
+    if (uniffi_rusaint_ffi_checksum_method_chapelapplication_get_selected_semester() != 6133) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_rusaint_ffi_checksum_method_chapelapplication_information() != 21740) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3602,6 +4402,9 @@ private var initializationResult: InitializationResult = {
     if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_classes() != 12879) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_get_selected_semester() != 50223) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_recorded_summary() != 3787) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -3611,7 +4414,40 @@ private var initializationResult: InitializationResult = {
     if (uniffi_rusaint_ffi_checksum_method_coursegradesapplicationbuilder_build() != 50139) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_find_lectures() != 997) {
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_chapel_categories() != 21428) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_collages() != 50658) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_connected_majors() != 24954) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_departments() != 10692) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_find_lectures() != 7590) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_get_selected_semester() != 52870) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_graduated_collages() != 29655) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_graduated_departments() != 42882) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_majors() != 356) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_optional_elective_categories() != 63165) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_required_electives() != 46039) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_united_majors() != 41228) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplicationbuilder_build() != 60808) {
@@ -3626,16 +4462,28 @@ private var initializationResult: InitializationResult = {
     if (uniffi_rusaint_ffi_checksum_method_graduationrequirementsapplicationbuilder_build() != 18426) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_rusaint_ffi_checksum_method_lectureassessmentapplication_find_assessments() != 52261) {
+    if (uniffi_rusaint_ffi_checksum_method_lectureassessmentapplication_find_assessments() != 53523) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_lectureassessmentapplication_get_selected_semester() != 2234) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_lectureassessmentapplicationbuilder_build() != 52720) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_personalcoursescheduleapplication_get_selected_semester() != 26180) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_personalcoursescheduleapplication_schedule() != 58730) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_personalcoursescheduleapplicationbuilder_build() != 42578) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_scholarshipsapplication_scholarships() != 28486) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_scholarshipsapplicationbuilder_build() != 35090) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_studentinformationapplication_academic_record() != 56142) {
@@ -3696,6 +4544,9 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_constructor_personalcoursescheduleapplicationbuilder_new() != 46717) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_constructor_scholarshipsapplicationbuilder_new() != 64614) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_constructor_studentinformationapplicationbuilder_new() != 5527) {

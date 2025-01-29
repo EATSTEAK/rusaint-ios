@@ -415,6 +415,22 @@ fileprivate struct FfiConverterUInt32: FfiConverterPrimitive {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterUInt64: FfiConverterPrimitive {
+    typealias FfiType = UInt64
+    typealias SwiftType = UInt64
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> UInt64 {
+        return try lift(readInt(&buf))
+    }
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        writeInt(&buf, lower(value))
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterFloat: FfiConverterPrimitive {
     typealias FfiType = Float
     typealias SwiftType = Float
@@ -2492,6 +2508,171 @@ public func FfiConverterTypePersonalCourseSchedule_lift(_ buf: RustBuffer) throw
 #endif
 public func FfiConverterTypePersonalCourseSchedule_lower(_ value: PersonalCourseSchedule) -> RustBuffer {
     return FfiConverterTypePersonalCourseSchedule.lower(value)
+}
+
+
+/**
+ * 수혜받은 장학금 정보
+ */
+public struct Scholarship {
+    public let year: UInt32
+    public let semester: SemesterType
+    public let name: String
+    public let receivedAmount: UInt64
+    public let receiveType: String
+    public let status: String
+    public let processedAt: String
+    public let selectedAmount: UInt64
+    public let refundedAmount: UInt64
+    public let replacedAmount: UInt64
+    public let replacedBy: String
+    public let dropReason: String
+    public let note: String
+    public let workedAt: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(year: UInt32, semester: SemesterType, name: String, receivedAmount: UInt64, receiveType: String, status: String, processedAt: String, selectedAmount: UInt64, refundedAmount: UInt64, replacedAmount: UInt64, replacedBy: String, dropReason: String, note: String, workedAt: String) {
+        self.year = year
+        self.semester = semester
+        self.name = name
+        self.receivedAmount = receivedAmount
+        self.receiveType = receiveType
+        self.status = status
+        self.processedAt = processedAt
+        self.selectedAmount = selectedAmount
+        self.refundedAmount = refundedAmount
+        self.replacedAmount = replacedAmount
+        self.replacedBy = replacedBy
+        self.dropReason = dropReason
+        self.note = note
+        self.workedAt = workedAt
+    }
+}
+
+
+
+extension Scholarship: Equatable, Hashable {
+    public static func ==(lhs: Scholarship, rhs: Scholarship) -> Bool {
+        if lhs.year != rhs.year {
+            return false
+        }
+        if lhs.semester != rhs.semester {
+            return false
+        }
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.receivedAmount != rhs.receivedAmount {
+            return false
+        }
+        if lhs.receiveType != rhs.receiveType {
+            return false
+        }
+        if lhs.status != rhs.status {
+            return false
+        }
+        if lhs.processedAt != rhs.processedAt {
+            return false
+        }
+        if lhs.selectedAmount != rhs.selectedAmount {
+            return false
+        }
+        if lhs.refundedAmount != rhs.refundedAmount {
+            return false
+        }
+        if lhs.replacedAmount != rhs.replacedAmount {
+            return false
+        }
+        if lhs.replacedBy != rhs.replacedBy {
+            return false
+        }
+        if lhs.dropReason != rhs.dropReason {
+            return false
+        }
+        if lhs.note != rhs.note {
+            return false
+        }
+        if lhs.workedAt != rhs.workedAt {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(year)
+        hasher.combine(semester)
+        hasher.combine(name)
+        hasher.combine(receivedAmount)
+        hasher.combine(receiveType)
+        hasher.combine(status)
+        hasher.combine(processedAt)
+        hasher.combine(selectedAmount)
+        hasher.combine(refundedAmount)
+        hasher.combine(replacedAmount)
+        hasher.combine(replacedBy)
+        hasher.combine(dropReason)
+        hasher.combine(note)
+        hasher.combine(workedAt)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeScholarship: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> Scholarship {
+        return
+            try Scholarship(
+                year: FfiConverterUInt32.read(from: &buf), 
+                semester: FfiConverterTypeSemesterType.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                receivedAmount: FfiConverterUInt64.read(from: &buf), 
+                receiveType: FfiConverterString.read(from: &buf), 
+                status: FfiConverterString.read(from: &buf), 
+                processedAt: FfiConverterString.read(from: &buf), 
+                selectedAmount: FfiConverterUInt64.read(from: &buf), 
+                refundedAmount: FfiConverterUInt64.read(from: &buf), 
+                replacedAmount: FfiConverterUInt64.read(from: &buf), 
+                replacedBy: FfiConverterString.read(from: &buf), 
+                dropReason: FfiConverterString.read(from: &buf), 
+                note: FfiConverterString.read(from: &buf), 
+                workedAt: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: Scholarship, into buf: inout [UInt8]) {
+        FfiConverterUInt32.write(value.year, into: &buf)
+        FfiConverterTypeSemesterType.write(value.semester, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterUInt64.write(value.receivedAmount, into: &buf)
+        FfiConverterString.write(value.receiveType, into: &buf)
+        FfiConverterString.write(value.status, into: &buf)
+        FfiConverterString.write(value.processedAt, into: &buf)
+        FfiConverterUInt64.write(value.selectedAmount, into: &buf)
+        FfiConverterUInt64.write(value.refundedAmount, into: &buf)
+        FfiConverterUInt64.write(value.replacedAmount, into: &buf)
+        FfiConverterString.write(value.replacedBy, into: &buf)
+        FfiConverterString.write(value.dropReason, into: &buf)
+        FfiConverterString.write(value.note, into: &buf)
+        FfiConverterString.write(value.workedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScholarship_lift(_ buf: RustBuffer) throws -> Scholarship {
+    return try FfiConverterTypeScholarship.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeScholarship_lower(_ value: Scholarship) -> RustBuffer {
+    return FfiConverterTypeScholarship.lower(value)
 }
 
 
