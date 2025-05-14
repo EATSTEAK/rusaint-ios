@@ -281,7 +281,7 @@ private func makeRustCall<T, E: Swift.Error>(
     _ callback: (UnsafeMutablePointer<RustCallStatus>) -> T,
     errorHandler: ((RustBuffer) throws -> E)?
 ) throws -> T {
-    uniffiEnsureInitialized()
+    uniffiEnsureRusaintFfiInitialized()
     var callStatus = RustCallStatus.init()
     let returnedVal = callback(&callStatus)
     try uniffiCheckCallStatus(callStatus: callStatus, errorHandler: errorHandler)
@@ -352,9 +352,10 @@ private func uniffiTraitInterfaceCallWithError<T, E>(
         callStatus.pointee.errorBuf = FfiConverterString.lower(String(describing: error))
     }
 }
-fileprivate class UniffiHandleMap<T> {
-    private var map: [UInt64: T] = [:]
+fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
+    // All mutation happens with this lock held, which is why we implement @unchecked Sendable.
     private let lock = NSLock()
+    private var map: [UInt64: T] = [:]
     private var currentHandle: UInt64 = 1
 
     func insert(obj: T) -> UInt64 {
@@ -499,7 +500,7 @@ fileprivate struct FfiConverterString: FfiConverter {
 /**
  * [채플정보조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW3681)
  */
-public protocol ChapelApplicationProtocol : AnyObject {
+public protocol ChapelApplicationProtocol: AnyObject, Sendable {
     
     /**
      * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
@@ -513,12 +514,10 @@ public protocol ChapelApplicationProtocol : AnyObject {
     func information(year: UInt32, semester: SemesterType) async throws  -> ChapelInformation
     
 }
-
 /**
  * [채플정보조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW3681)
  */
-open class ChapelApplication:
-    ChapelApplicationProtocol {
+open class ChapelApplication: ChapelApplicationProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -532,6 +531,9 @@ open class ChapelApplication:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -571,7 +573,7 @@ open class ChapelApplication:
      * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
      * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
      */
-open func getSelectedSemester()async throws  -> YearSemester {
+open func getSelectedSemester()async throws  -> YearSemester  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -583,15 +585,15 @@ open func getSelectedSemester()async throws  -> YearSemester {
             pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeYearSemester.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypeYearSemester_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 해당 학기의 채플 정보를 가져옵니다.
      */
-open func information(year: UInt32, semester: SemesterType)async throws  -> ChapelInformation {
+open func information(year: UInt32, semester: SemesterType)async throws  -> ChapelInformation  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -604,12 +606,13 @@ open func information(year: UInt32, semester: SemesterType)async throws  -> Chap
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeChapelInformation_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -646,8 +649,6 @@ public struct FfiConverterTypeChapelApplication: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -665,10 +666,12 @@ public func FfiConverterTypeChapelApplication_lower(_ value: ChapelApplication) 
 
 
 
+
+
 /**
  * [`ChapelApplication`] 생성을 위한 빌더
  */
-public protocol ChapelApplicationBuilderProtocol : AnyObject {
+public protocol ChapelApplicationBuilderProtocol: AnyObject, Sendable {
     
     /**
      * 세션과 함께 [`ChapelApplication`]을 만듭니다.
@@ -676,12 +679,10 @@ public protocol ChapelApplicationBuilderProtocol : AnyObject {
     func build(session: USaintSession) async throws  -> ChapelApplication
     
 }
-
 /**
  * [`ChapelApplication`] 생성을 위한 빌더
  */
-open class ChapelApplicationBuilder:
-    ChapelApplicationBuilderProtocol {
+open class ChapelApplicationBuilder: ChapelApplicationBuilderProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -695,6 +696,9 @@ open class ChapelApplicationBuilder:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -743,25 +747,26 @@ public convenience init() {
     /**
      * 세션과 함께 [`ChapelApplication`]을 만듭니다.
      */
-open func build(session: USaintSession)async throws  -> ChapelApplication {
+open func build(session: USaintSession)async throws  -> ChapelApplication  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_chapelapplicationbuilder_build(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeUSaintSession.lower(session)
+                    FfiConverterTypeUSaintSession_lower(session)
                 )
             },
             pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeChapelApplication.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypeChapelApplication_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -798,8 +803,6 @@ public struct FfiConverterTypeChapelApplicationBuilder: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -817,10 +820,12 @@ public func FfiConverterTypeChapelApplicationBuilder_lower(_ value: ChapelApplic
 
 
 
+
+
 /**
  * [학생 성적 조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMB3W0017)
  */
-public protocol CourseGradesApplicationProtocol : AnyObject {
+public protocol CourseGradesApplicationProtocol: AnyObject, Sendable {
     
     /**
      * 전체 학기의 증명 평점 정보를 가져옵니다.
@@ -857,12 +862,10 @@ public protocol CourseGradesApplicationProtocol : AnyObject {
     func semesters(courseType: CourseType) async throws  -> [SemesterGrade]
     
 }
-
 /**
  * [학생 성적 조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMB3W0017)
  */
-open class CourseGradesApplication:
-    CourseGradesApplicationProtocol {
+open class CourseGradesApplication: CourseGradesApplicationProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -876,6 +879,9 @@ open class CourseGradesApplication:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -914,7 +920,7 @@ open class CourseGradesApplication:
     /**
      * 전체 학기의 증명 평점 정보를 가져옵니다.
      */
-open func certificatedSummary(courseType: CourseType)async throws  -> GradeSummary {
+open func certificatedSummary(courseType: CourseType)async throws  -> GradeSummary  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -927,14 +933,14 @@ open func certificatedSummary(courseType: CourseType)async throws  -> GradeSumma
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeGradeSummary_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 주어진 수업의 상세 성적 정보를 가져옵니다.
      */
-open func classDetail(courseType: CourseType, year: UInt32, semester: SemesterType, code: String)async throws  -> [String: Float] {
+open func classDetail(courseType: CourseType, year: UInt32, semester: SemesterType, code: String)async throws  -> [String: Float]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -947,7 +953,7 @@ open func classDetail(courseType: CourseType, year: UInt32, semester: SemesterTy
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterDictionaryStringFloat.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
@@ -957,7 +963,7 @@ open func classDetail(courseType: CourseType, year: UInt32, semester: SemesterTy
      *
      * 수업 성적을 가져온 이후 상세 성적 또한 가져오려면 `[class_detail()]`함수를 이용하십시오.
      */
-open func classes(courseType: CourseType, year: UInt32, semester: SemesterType, includeDetails: Bool)async throws  -> [ClassGrade] {
+open func classes(courseType: CourseType, year: UInt32, semester: SemesterType, includeDetails: Bool)async throws  -> [ClassGrade]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -970,7 +976,7 @@ open func classes(courseType: CourseType, year: UInt32, semester: SemesterType, 
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeClassGrade.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
@@ -978,7 +984,7 @@ open func classes(courseType: CourseType, year: UInt32, semester: SemesterType, 
      * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
      * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
      */
-open func getSelectedSemester()async throws  -> YearSemester {
+open func getSelectedSemester()async throws  -> YearSemester  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -990,15 +996,15 @@ open func getSelectedSemester()async throws  -> YearSemester {
             pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeYearSemester.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypeYearSemester_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 전체 학기의 학적부 평점 정보를 가져옵니다.
      */
-open func recordedSummary(courseType: CourseType)async throws  -> GradeSummary {
+open func recordedSummary(courseType: CourseType)async throws  -> GradeSummary  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1011,14 +1017,14 @@ open func recordedSummary(courseType: CourseType)async throws  -> GradeSummary {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeGradeSummary_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 학기별 평점 정보를 가져옵니다.
      */
-open func semesters(courseType: CourseType)async throws  -> [SemesterGrade] {
+open func semesters(courseType: CourseType)async throws  -> [SemesterGrade]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1031,12 +1037,13 @@ open func semesters(courseType: CourseType)async throws  -> [SemesterGrade] {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeSemesterGrade.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1073,8 +1080,6 @@ public struct FfiConverterTypeCourseGradesApplication: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -1092,10 +1097,12 @@ public func FfiConverterTypeCourseGradesApplication_lower(_ value: CourseGradesA
 
 
 
+
+
 /**
  * [`CourseGradesApplication`] 생성을 위한 빌더
  */
-public protocol CourseGradesApplicationBuilderProtocol : AnyObject {
+public protocol CourseGradesApplicationBuilderProtocol: AnyObject, Sendable {
     
     /**
      * 세션과 함께 [`CourseGradesApplication`]을 만듭니다.
@@ -1103,12 +1110,10 @@ public protocol CourseGradesApplicationBuilderProtocol : AnyObject {
     func build(session: USaintSession) async throws  -> CourseGradesApplication
     
 }
-
 /**
  * [`CourseGradesApplication`] 생성을 위한 빌더
  */
-open class CourseGradesApplicationBuilder:
-    CourseGradesApplicationBuilderProtocol {
+open class CourseGradesApplicationBuilder: CourseGradesApplicationBuilderProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -1122,6 +1127,9 @@ open class CourseGradesApplicationBuilder:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -1170,25 +1178,26 @@ public convenience init() {
     /**
      * 세션과 함께 [`CourseGradesApplication`]을 만듭니다.
      */
-open func build(session: USaintSession)async throws  -> CourseGradesApplication {
+open func build(session: USaintSession)async throws  -> CourseGradesApplication  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursegradesapplicationbuilder_build(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeUSaintSession.lower(session)
+                    FfiConverterTypeUSaintSession_lower(session)
                 )
             },
             pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeCourseGradesApplication.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypeCourseGradesApplication_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1225,8 +1234,6 @@ public struct FfiConverterTypeCourseGradesApplicationBuilder: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -1244,10 +1251,12 @@ public func FfiConverterTypeCourseGradesApplicationBuilder_lower(_ value: Course
 
 
 
+
+
 /**
  * [강의시간표](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW2100)
  */
-public protocol CourseScheduleApplicationProtocol : AnyObject {
+public protocol CourseScheduleApplicationProtocol: AnyObject, Sendable {
     
     /**
      * 선택한 학기의 채플 과목 분류 목록을 가져옵니다.
@@ -1311,12 +1320,10 @@ public protocol CourseScheduleApplicationProtocol : AnyObject {
     func unitedMajors(year: UInt32, semester: SemesterType) async throws  -> [String]
     
 }
-
 /**
  * [강의시간표](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW2100)
  */
-open class CourseScheduleApplication:
-    CourseScheduleApplicationProtocol {
+open class CourseScheduleApplication: CourseScheduleApplicationProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -1330,6 +1337,9 @@ open class CourseScheduleApplication:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -1368,7 +1378,7 @@ open class CourseScheduleApplication:
     /**
      * 선택한 학기의 채플 과목 분류 목록을 가져옵니다.
      */
-open func chapelCategories(year: UInt32, semester: SemesterType)async throws  -> [String] {
+open func chapelCategories(year: UInt32, semester: SemesterType)async throws  -> [String]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1381,14 +1391,14 @@ open func chapelCategories(year: UInt32, semester: SemesterType)async throws  ->
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceString.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 선택한 학기 기준 단과대 목록을 가져옵니다.
      */
-open func collages(year: UInt32, semester: SemesterType)async throws  -> [String] {
+open func collages(year: UInt32, semester: SemesterType)async throws  -> [String]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1401,14 +1411,14 @@ open func collages(year: UInt32, semester: SemesterType)async throws  -> [String
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceString.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 선택한 학기의 연계전공 목록을 가져옵니다.
      */
-open func connectedMajors(year: UInt32, semester: SemesterType)async throws  -> [String] {
+open func connectedMajors(year: UInt32, semester: SemesterType)async throws  -> [String]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1421,14 +1431,14 @@ open func connectedMajors(year: UInt32, semester: SemesterType)async throws  -> 
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceString.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 선택한 학기 기준 주어진 단과대의 학과(부) 목록을 가져옵니다.
      */
-open func departments(year: UInt32, semester: SemesterType, collage: String)async throws  -> [String] {
+open func departments(year: UInt32, semester: SemesterType, collage: String)async throws  -> [String]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1441,14 +1451,14 @@ open func departments(year: UInt32, semester: SemesterType, collage: String)asyn
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceString.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 학기, 학년도, 강의 분류를 통해 강의를 찾습니다.
      */
-open func findLectures(year: UInt32, semester: SemesterType, lectureCategory: LectureCategory)async throws  -> [Lecture] {
+open func findLectures(year: UInt32, semester: SemesterType, lectureCategory: LectureCategory)async throws  -> [Lecture]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1461,7 +1471,7 @@ open func findLectures(year: UInt32, semester: SemesterType, lectureCategory: Le
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeLecture.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
@@ -1469,7 +1479,7 @@ open func findLectures(year: UInt32, semester: SemesterType, lectureCategory: Le
      * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
      * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
      */
-open func getSelectedSemester()async throws  -> YearSemester {
+open func getSelectedSemester()async throws  -> YearSemester  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1481,15 +1491,15 @@ open func getSelectedSemester()async throws  -> YearSemester {
             pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeYearSemester.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypeYearSemester_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 선택한 학기의 대학원 단과대학 목록을 가져옵니다.
      */
-open func graduatedCollages(year: UInt32, semester: SemesterType)async throws  -> [String] {
+open func graduatedCollages(year: UInt32, semester: SemesterType)async throws  -> [String]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1502,14 +1512,14 @@ open func graduatedCollages(year: UInt32, semester: SemesterType)async throws  -
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceString.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 선택한 학기의 주어진 대학원 단과대의 학과 목록을 가져옵니다.
      */
-open func graduatedDepartments(year: UInt32, semester: SemesterType, collage: String)async throws  -> [String] {
+open func graduatedDepartments(year: UInt32, semester: SemesterType, collage: String)async throws  -> [String]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1522,14 +1532,14 @@ open func graduatedDepartments(year: UInt32, semester: SemesterType, collage: St
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceString.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 선택한 학과(부)의 전공 목록을 가져옵니다.
      */
-open func majors(year: UInt32, semester: SemesterType, collage: String, department: String)async throws  -> [String] {
+open func majors(year: UInt32, semester: SemesterType, collage: String, department: String)async throws  -> [String]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1542,14 +1552,14 @@ open func majors(year: UInt32, semester: SemesterType, collage: String, departme
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceString.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 선택한 학기의 교양선택 분야 목록을 가져옵니다.
      */
-open func optionalElectiveCategories(year: UInt32, semester: SemesterType)async throws  -> [String] {
+open func optionalElectiveCategories(year: UInt32, semester: SemesterType)async throws  -> [String]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1562,14 +1572,14 @@ open func optionalElectiveCategories(year: UInt32, semester: SemesterType)async 
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceString.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 선택한 학기의 교양필수 과목명 목록을 가져옵니다.
      */
-open func requiredElectives(year: UInt32, semester: SemesterType)async throws  -> [String] {
+open func requiredElectives(year: UInt32, semester: SemesterType)async throws  -> [String]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1582,14 +1592,14 @@ open func requiredElectives(year: UInt32, semester: SemesterType)async throws  -
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceString.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 선택한 학기의 융합전공 목록을 가져옵니다.
      */
-open func unitedMajors(year: UInt32, semester: SemesterType)async throws  -> [String] {
+open func unitedMajors(year: UInt32, semester: SemesterType)async throws  -> [String]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1602,12 +1612,13 @@ open func unitedMajors(year: UInt32, semester: SemesterType)async throws  -> [St
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceString.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1644,8 +1655,6 @@ public struct FfiConverterTypeCourseScheduleApplication: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -1663,10 +1672,12 @@ public func FfiConverterTypeCourseScheduleApplication_lower(_ value: CourseSched
 
 
 
+
+
 /**
  * [`CourseScheduleApplication`] 생성을 위한 빌더
  */
-public protocol CourseScheduleApplicationBuilderProtocol : AnyObject {
+public protocol CourseScheduleApplicationBuilderProtocol: AnyObject, Sendable {
     
     /**
      * 세션과 함께 [`CourseScheduleApplication`]을 만듭니다.
@@ -1674,12 +1685,10 @@ public protocol CourseScheduleApplicationBuilderProtocol : AnyObject {
     func build(session: USaintSession) async throws  -> CourseScheduleApplication
     
 }
-
 /**
  * [`CourseScheduleApplication`] 생성을 위한 빌더
  */
-open class CourseScheduleApplicationBuilder:
-    CourseScheduleApplicationBuilderProtocol {
+open class CourseScheduleApplicationBuilder: CourseScheduleApplicationBuilderProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -1693,6 +1702,9 @@ open class CourseScheduleApplicationBuilder:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -1741,25 +1753,26 @@ public convenience init() {
     /**
      * 세션과 함께 [`CourseScheduleApplication`]을 만듭니다.
      */
-open func build(session: USaintSession)async throws  -> CourseScheduleApplication {
+open func build(session: USaintSession)async throws  -> CourseScheduleApplication  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplicationbuilder_build(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeUSaintSession.lower(session)
+                    FfiConverterTypeUSaintSession_lower(session)
                 )
             },
             pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeCourseScheduleApplication.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypeCourseScheduleApplication_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1796,8 +1809,6 @@ public struct FfiConverterTypeCourseScheduleApplicationBuilder: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -1815,10 +1826,12 @@ public func FfiConverterTypeCourseScheduleApplicationBuilder_lower(_ value: Cour
 
 
 
+
+
 /**
  * [졸업사정표](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW8015)
  */
-public protocol GraduationRequirementsApplicationProtocol : AnyObject {
+public protocol GraduationRequirementsApplicationProtocol: AnyObject, Sendable {
     
     /**
      * 졸업사정 결과와 졸업 필요 요건별 충족 여부와 세부 정보를 반환합니다.
@@ -1831,12 +1844,10 @@ public protocol GraduationRequirementsApplicationProtocol : AnyObject {
     func studentInfo() async throws  -> GraduationStudent
     
 }
-
 /**
  * [졸업사정표](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW8015)
  */
-open class GraduationRequirementsApplication:
-    GraduationRequirementsApplicationProtocol {
+open class GraduationRequirementsApplication: GraduationRequirementsApplicationProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -1850,6 +1861,9 @@ open class GraduationRequirementsApplication:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -1888,7 +1902,7 @@ open class GraduationRequirementsApplication:
     /**
      * 졸업사정 결과와 졸업 필요 요건별 충족 여부와 세부 정보를 반환합니다.
      */
-open func requirements()async throws  -> GraduationRequirements {
+open func requirements()async throws  -> GraduationRequirements  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1901,14 +1915,14 @@ open func requirements()async throws  -> GraduationRequirements {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeGraduationRequirements_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 학생 정보를 반환합니다.
      */
-open func studentInfo()async throws  -> GraduationStudent {
+open func studentInfo()async throws  -> GraduationStudent  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -1921,12 +1935,13 @@ open func studentInfo()async throws  -> GraduationStudent {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeGraduationStudent_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1963,8 +1978,6 @@ public struct FfiConverterTypeGraduationRequirementsApplication: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -1982,10 +1995,12 @@ public func FfiConverterTypeGraduationRequirementsApplication_lower(_ value: Gra
 
 
 
+
+
 /**
  * [`GraduationRequirementsApplication`] 생성을 위한 빌더
  */
-public protocol GraduationRequirementsApplicationBuilderProtocol : AnyObject {
+public protocol GraduationRequirementsApplicationBuilderProtocol: AnyObject, Sendable {
     
     /**
      * 세션과 함께 [`GraduationRequirementsApplication`]을 만듭니다.
@@ -1993,12 +2008,10 @@ public protocol GraduationRequirementsApplicationBuilderProtocol : AnyObject {
     func build(session: USaintSession) async throws  -> GraduationRequirementsApplication
     
 }
-
 /**
  * [`GraduationRequirementsApplication`] 생성을 위한 빌더
  */
-open class GraduationRequirementsApplicationBuilder:
-    GraduationRequirementsApplicationBuilderProtocol {
+open class GraduationRequirementsApplicationBuilder: GraduationRequirementsApplicationBuilderProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -2012,6 +2025,9 @@ open class GraduationRequirementsApplicationBuilder:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -2060,25 +2076,26 @@ public convenience init() {
     /**
      * 세션과 함께 [`GraduationRequirementsApplication`]을 만듭니다.
      */
-open func build(session: USaintSession)async throws  -> GraduationRequirementsApplication {
+open func build(session: USaintSession)async throws  -> GraduationRequirementsApplication  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_graduationrequirementsapplicationbuilder_build(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeUSaintSession.lower(session)
+                    FfiConverterTypeUSaintSession_lower(session)
                 )
             },
             pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeGraduationRequirementsApplication.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypeGraduationRequirementsApplication_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -2115,8 +2132,6 @@ public struct FfiConverterTypeGraduationRequirementsApplicationBuilder: FfiConve
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -2134,10 +2149,12 @@ public func FfiConverterTypeGraduationRequirementsApplicationBuilder_lower(_ val
 
 
 
+
+
 /**
  * [강의평가조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMB2W1010)
  */
-public protocol LectureAssessmentApplicationProtocol : AnyObject {
+public protocol LectureAssessmentApplicationProtocol: AnyObject, Sendable {
     
     /**
      * 검색 조건에 맞는 강의평가 정보를 가져옵니다.
@@ -2151,12 +2168,10 @@ public protocol LectureAssessmentApplicationProtocol : AnyObject {
     func getSelectedSemester() async throws  -> YearSemester
     
 }
-
 /**
  * [강의평가조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMB2W1010)
  */
-open class LectureAssessmentApplication:
-    LectureAssessmentApplicationProtocol {
+open class LectureAssessmentApplication: LectureAssessmentApplicationProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -2170,6 +2185,9 @@ open class LectureAssessmentApplication:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -2208,7 +2226,7 @@ open class LectureAssessmentApplication:
     /**
      * 검색 조건에 맞는 강의평가 정보를 가져옵니다.
      */
-open func findAssessments(year: UInt32, semester: SemesterType, lectureName: String? = nil, lectureCode: UInt32? = nil, professorName: String? = nil)async throws  -> [LectureAssessmentResult] {
+open func findAssessments(year: UInt32, semester: SemesterType, lectureName: String? = nil, lectureCode: UInt32? = nil, professorName: String? = nil)async throws  -> [LectureAssessmentResult]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -2221,7 +2239,7 @@ open func findAssessments(year: UInt32, semester: SemesterType, lectureName: Str
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeLectureAssessmentResult.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
@@ -2229,7 +2247,7 @@ open func findAssessments(year: UInt32, semester: SemesterType, lectureName: Str
      * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
      * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
      */
-open func getSelectedSemester()async throws  -> YearSemester {
+open func getSelectedSemester()async throws  -> YearSemester  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -2241,13 +2259,14 @@ open func getSelectedSemester()async throws  -> YearSemester {
             pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeYearSemester.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypeYearSemester_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -2284,8 +2303,6 @@ public struct FfiConverterTypeLectureAssessmentApplication: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -2303,10 +2320,12 @@ public func FfiConverterTypeLectureAssessmentApplication_lower(_ value: LectureA
 
 
 
+
+
 /**
  * [`LectureAssessmentApplication`] 생성을 위한 빌더
  */
-public protocol LectureAssessmentApplicationBuilderProtocol : AnyObject {
+public protocol LectureAssessmentApplicationBuilderProtocol: AnyObject, Sendable {
     
     /**
      * 세션과 함께 [`LectureAssessmentApplication`]을 만듭니다.
@@ -2314,12 +2333,10 @@ public protocol LectureAssessmentApplicationBuilderProtocol : AnyObject {
     func build(session: USaintSession) async throws  -> LectureAssessmentApplication
     
 }
-
 /**
  * [`LectureAssessmentApplication`] 생성을 위한 빌더
  */
-open class LectureAssessmentApplicationBuilder:
-    LectureAssessmentApplicationBuilderProtocol {
+open class LectureAssessmentApplicationBuilder: LectureAssessmentApplicationBuilderProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -2333,6 +2350,9 @@ open class LectureAssessmentApplicationBuilder:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -2381,25 +2401,26 @@ public convenience init() {
     /**
      * 세션과 함께 [`LectureAssessmentApplication`]을 만듭니다.
      */
-open func build(session: USaintSession)async throws  -> LectureAssessmentApplication {
+open func build(session: USaintSession)async throws  -> LectureAssessmentApplication  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_lectureassessmentapplicationbuilder_build(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeUSaintSession.lower(session)
+                    FfiConverterTypeUSaintSession_lower(session)
                 )
             },
             pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeLectureAssessmentApplication.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypeLectureAssessmentApplication_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -2436,8 +2457,6 @@ public struct FfiConverterTypeLectureAssessmentApplicationBuilder: FfiConverter 
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -2455,10 +2474,12 @@ public func FfiConverterTypeLectureAssessmentApplicationBuilder_lower(_ value: L
 
 
 
+
+
 /**
  * [개인수업시간표](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW2102)
  */
-public protocol PersonalCourseScheduleApplicationProtocol : AnyObject {
+public protocol PersonalCourseScheduleApplicationProtocol: AnyObject, Sendable {
     
     /**
      * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
@@ -2472,12 +2493,10 @@ public protocol PersonalCourseScheduleApplicationProtocol : AnyObject {
     func schedule(year: UInt32, semester: SemesterType) async throws  -> PersonalCourseSchedule
     
 }
-
 /**
  * [개인수업시간표](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW2102)
  */
-open class PersonalCourseScheduleApplication:
-    PersonalCourseScheduleApplicationProtocol {
+open class PersonalCourseScheduleApplication: PersonalCourseScheduleApplicationProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -2491,6 +2510,9 @@ open class PersonalCourseScheduleApplication:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -2530,7 +2552,7 @@ open class PersonalCourseScheduleApplication:
      * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
      * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
      */
-open func getSelectedSemester()async throws  -> YearSemester {
+open func getSelectedSemester()async throws  -> YearSemester  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -2542,15 +2564,15 @@ open func getSelectedSemester()async throws  -> YearSemester {
             pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
-            liftFunc: FfiConverterTypeYearSemester.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypeYearSemester_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 해당 학기의 시간표 정보를 가져옵니다.
      */
-open func schedule(year: UInt32, semester: SemesterType)async throws  -> PersonalCourseSchedule {
+open func schedule(year: UInt32, semester: SemesterType)async throws  -> PersonalCourseSchedule  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -2563,12 +2585,13 @@ open func schedule(year: UInt32, semester: SemesterType)async throws  -> Persona
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypePersonalCourseSchedule_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -2605,8 +2628,6 @@ public struct FfiConverterTypePersonalCourseScheduleApplication: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -2624,10 +2645,12 @@ public func FfiConverterTypePersonalCourseScheduleApplication_lower(_ value: Per
 
 
 
+
+
 /**
  * [`PersonalCourseScheduleApplication`] 생성을 위한 빌더
  */
-public protocol PersonalCourseScheduleApplicationBuilderProtocol : AnyObject {
+public protocol PersonalCourseScheduleApplicationBuilderProtocol: AnyObject, Sendable {
     
     /**
      * 세션과 함께 [`PersonalCourseScheduleApplication`]을 만듭니다.
@@ -2635,12 +2658,10 @@ public protocol PersonalCourseScheduleApplicationBuilderProtocol : AnyObject {
     func build(session: USaintSession) async throws  -> PersonalCourseScheduleApplication
     
 }
-
 /**
  * [`PersonalCourseScheduleApplication`] 생성을 위한 빌더
  */
-open class PersonalCourseScheduleApplicationBuilder:
-    PersonalCourseScheduleApplicationBuilderProtocol {
+open class PersonalCourseScheduleApplicationBuilder: PersonalCourseScheduleApplicationBuilderProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -2654,6 +2675,9 @@ open class PersonalCourseScheduleApplicationBuilder:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -2702,25 +2726,26 @@ public convenience init() {
     /**
      * 세션과 함께 [`PersonalCourseScheduleApplication`]을 만듭니다.
      */
-open func build(session: USaintSession)async throws  -> PersonalCourseScheduleApplication {
+open func build(session: USaintSession)async throws  -> PersonalCourseScheduleApplication  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_personalcoursescheduleapplicationbuilder_build(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeUSaintSession.lower(session)
+                    FfiConverterTypeUSaintSession_lower(session)
                 )
             },
             pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypePersonalCourseScheduleApplication.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypePersonalCourseScheduleApplication_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -2757,8 +2782,6 @@ public struct FfiConverterTypePersonalCourseScheduleApplicationBuilder: FfiConve
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -2776,10 +2799,12 @@ public func FfiConverterTypePersonalCourseScheduleApplicationBuilder_lower(_ val
 
 
 
+
+
 /**
  * [장학금수혜내역조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW7530n)
  */
-public protocol ScholarshipsApplicationProtocol : AnyObject {
+public protocol ScholarshipsApplicationProtocol: AnyObject, Sendable {
     
     /**
      * 장학금 수혜 내역을 가져옵니다.
@@ -2787,12 +2812,10 @@ public protocol ScholarshipsApplicationProtocol : AnyObject {
     func scholarships() async throws  -> [Scholarship]
     
 }
-
 /**
  * [장학금수혜내역조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW7530n)
  */
-open class ScholarshipsApplication:
-    ScholarshipsApplicationProtocol {
+open class ScholarshipsApplication: ScholarshipsApplicationProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -2806,6 +2829,9 @@ open class ScholarshipsApplication:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -2844,7 +2870,7 @@ open class ScholarshipsApplication:
     /**
      * 장학금 수혜 내역을 가져옵니다.
      */
-open func scholarships()async throws  -> [Scholarship] {
+open func scholarships()async throws  -> [Scholarship]  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -2857,12 +2883,13 @@ open func scholarships()async throws  -> [Scholarship] {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceTypeScholarship.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -2899,8 +2926,6 @@ public struct FfiConverterTypeScholarshipsApplication: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -2918,10 +2943,12 @@ public func FfiConverterTypeScholarshipsApplication_lower(_ value: ScholarshipsA
 
 
 
+
+
 /**
  * [`ScholarshipsApplication`] 생성을 위한 빌더
  */
-public protocol ScholarshipsApplicationBuilderProtocol : AnyObject {
+public protocol ScholarshipsApplicationBuilderProtocol: AnyObject, Sendable {
     
     /**
      * 세션과 함께 [`ScholarshipsApplication`]을 만듭니다.
@@ -2929,12 +2956,10 @@ public protocol ScholarshipsApplicationBuilderProtocol : AnyObject {
     func build(session: USaintSession) async throws  -> ScholarshipsApplication
     
 }
-
 /**
  * [`ScholarshipsApplication`] 생성을 위한 빌더
  */
-open class ScholarshipsApplicationBuilder:
-    ScholarshipsApplicationBuilderProtocol {
+open class ScholarshipsApplicationBuilder: ScholarshipsApplicationBuilderProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -2948,6 +2973,9 @@ open class ScholarshipsApplicationBuilder:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -2996,25 +3024,26 @@ public convenience init() {
     /**
      * 세션과 함께 [`ScholarshipsApplication`]을 만듭니다.
      */
-open func build(session: USaintSession)async throws  -> ScholarshipsApplication {
+open func build(session: USaintSession)async throws  -> ScholarshipsApplication  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_scholarshipsapplicationbuilder_build(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeUSaintSession.lower(session)
+                    FfiConverterTypeUSaintSession_lower(session)
                 )
             },
             pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeScholarshipsApplication.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypeScholarshipsApplication_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -3051,8 +3080,6 @@ public struct FfiConverterTypeScholarshipsApplicationBuilder: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -3070,10 +3097,12 @@ public func FfiConverterTypeScholarshipsApplicationBuilder_lower(_ value: Schola
 
 
 
+
+
 /**
  * [학생 정보 수정 및 조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW1001n)
  */
-public protocol StudentInformationApplicationProtocol : AnyObject {
+public protocol StudentInformationApplicationProtocol: AnyObject, Sendable {
     
     /**
      * 학생의 학적상태 정보를 반환합니다.
@@ -3126,12 +3155,10 @@ public protocol StudentInformationApplicationProtocol : AnyObject {
     func work() async throws  -> StudentWorkInformation
     
 }
-
 /**
  * [학생 정보 수정 및 조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW1001n)
  */
-open class StudentInformationApplication:
-    StudentInformationApplicationProtocol {
+open class StudentInformationApplication: StudentInformationApplicationProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -3145,6 +3172,9 @@ open class StudentInformationApplication:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -3183,7 +3213,7 @@ open class StudentInformationApplication:
     /**
      * 학생의 학적상태 정보를 반환합니다.
      */
-open func academicRecord()async throws  -> StudentAcademicRecords {
+open func academicRecord()async throws  -> StudentAcademicRecords  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -3196,14 +3226,14 @@ open func academicRecord()async throws  -> StudentAcademicRecords {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeStudentAcademicRecords_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 학생의 은행계좌 정보를 반환합니다.
      */
-open func bankAccount()async throws  -> StudentBankAccount {
+open func bankAccount()async throws  -> StudentBankAccount  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -3216,14 +3246,14 @@ open func bankAccount()async throws  -> StudentBankAccount {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeStudentBankAccount_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 학생의 가족관계 정보를 반환합니다.
      */
-open func family()async throws  -> StudentFamily {
+open func family()async throws  -> StudentFamily  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -3236,14 +3266,14 @@ open func family()async throws  -> StudentFamily {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeStudentFamily_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 일반 학생 정보를 반환합니다.
      */
-open func general()async throws  -> StudentInformation {
+open func general()async throws  -> StudentInformation  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -3256,14 +3286,14 @@ open func general()async throws  -> StudentInformation {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeStudentInformation_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 학생의 졸업과 관련된 정보를 반환합니다.
      */
-open func graduation()async throws  -> StudentGraduation {
+open func graduation()async throws  -> StudentGraduation  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -3276,14 +3306,14 @@ open func graduation()async throws  -> StudentGraduation {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeStudentGraduation_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 학생의 교직, 평생교육사, 7+1 프로그램 등 자격 관련 정보를 반환합니다.
      */
-open func qualifications()async throws  -> StudentQualification {
+open func qualifications()async throws  -> StudentQualification  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -3296,14 +3326,14 @@ open func qualifications()async throws  -> StudentQualification {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeStudentQualification_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 학생의 종교 정보를 반환합니다.
      */
-open func religion()async throws  -> StudentReligion {
+open func religion()async throws  -> StudentReligion  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -3316,14 +3346,14 @@ open func religion()async throws  -> StudentReligion {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeStudentReligion_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 학생의 연구비 입금 계좌를 반환합니다.
      */
-open func researchBankAccount()async throws  -> StudentResearchBankAccount {
+open func researchBankAccount()async throws  -> StudentResearchBankAccount  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -3336,14 +3366,14 @@ open func researchBankAccount()async throws  -> StudentResearchBankAccount {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeStudentResearchBankAccount_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 학생의 편입정보를 반환합니다.
      */
-open func transfer()async throws  -> StudentTransferRecords {
+open func transfer()async throws  -> StudentTransferRecords  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -3356,14 +3386,14 @@ open func transfer()async throws  -> StudentTransferRecords {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeStudentTransferRecords_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
     /**
      * 학생의 직장 정보를 반환합니다.
      */
-open func work()async throws  -> StudentWorkInformation {
+open func work()async throws  -> StudentWorkInformation  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -3376,12 +3406,13 @@ open func work()async throws  -> StudentWorkInformation {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeStudentWorkInformation_lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -3418,8 +3449,6 @@ public struct FfiConverterTypeStudentInformationApplication: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -3437,10 +3466,12 @@ public func FfiConverterTypeStudentInformationApplication_lower(_ value: Student
 
 
 
+
+
 /**
  * [`StudentInformationApplication`] 생성을 위한 빌더
  */
-public protocol StudentInformationApplicationBuilderProtocol : AnyObject {
+public protocol StudentInformationApplicationBuilderProtocol: AnyObject, Sendable {
     
     /**
      * 세션과 함께 [`StudentInformationApplication`]을 만듭니다.
@@ -3448,12 +3479,10 @@ public protocol StudentInformationApplicationBuilderProtocol : AnyObject {
     func build(session: USaintSession) async throws  -> StudentInformationApplication
     
 }
-
 /**
  * [`StudentInformationApplication`] 생성을 위한 빌더
  */
-open class StudentInformationApplicationBuilder:
-    StudentInformationApplicationBuilderProtocol {
+open class StudentInformationApplicationBuilder: StudentInformationApplicationBuilderProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -3467,6 +3496,9 @@ open class StudentInformationApplicationBuilder:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -3515,25 +3547,26 @@ public convenience init() {
     /**
      * 세션과 함께 [`StudentInformationApplication`]을 만듭니다.
      */
-open func build(session: USaintSession)async throws  -> StudentInformationApplication {
+open func build(session: USaintSession)async throws  -> StudentInformationApplication  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_studentinformationapplicationbuilder_build(
                     self.uniffiClonePointer(),
-                    FfiConverterTypeUSaintSession.lower(session)
+                    FfiConverterTypeUSaintSession_lower(session)
                 )
             },
             pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeStudentInformationApplication.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypeStudentInformationApplication_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -3570,8 +3603,6 @@ public struct FfiConverterTypeStudentInformationApplicationBuilder: FfiConverter
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -3589,20 +3620,20 @@ public func FfiConverterTypeStudentInformationApplicationBuilder_lower(_ value: 
 
 
 
-/**
- * u-saint에서 사용할 세션
- * [`USaintSessionBuilder`]를 이용해 생성합니다.
- */
-public protocol USaintSessionProtocol : AnyObject {
-    
-}
+
 
 /**
  * u-saint에서 사용할 세션
  * [`USaintSessionBuilder`]를 이용해 생성합니다.
  */
-open class USaintSession:
-    USaintSessionProtocol {
+public protocol USaintSessionProtocol: AnyObject, Sendable {
+    
+}
+/**
+ * u-saint에서 사용할 세션
+ * [`USaintSessionBuilder`]를 이용해 생성합니다.
+ */
+open class USaintSession: USaintSessionProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -3616,6 +3647,9 @@ open class USaintSession:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -3654,6 +3688,7 @@ open class USaintSession:
 
 }
 
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -3689,8 +3724,6 @@ public struct FfiConverterTypeUSaintSession: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -3708,10 +3741,12 @@ public func FfiConverterTypeUSaintSession_lower(_ value: USaintSession) -> Unsaf
 
 
 
+
+
 /**
  * [`USaintSession`]을 생성하기 위한 빌더
  */
-public protocol USaintSessionBuilderProtocol : AnyObject {
+public protocol USaintSessionBuilderProtocol: AnyObject, Sendable {
     
     /**
      * 익명 세션(비로그인)을 만듭니다.
@@ -3745,12 +3780,10 @@ public protocol USaintSessionBuilderProtocol : AnyObject {
     func withToken(id: String, token: String) async throws  -> USaintSession
     
 }
-
 /**
  * [`USaintSession`]을 생성하기 위한 빌더
  */
-open class USaintSessionBuilder:
-    USaintSessionBuilderProtocol {
+open class USaintSessionBuilder: USaintSessionBuilderProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -3764,6 +3797,9 @@ open class USaintSessionBuilder:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -3818,8 +3854,8 @@ public convenience init() {
      * }
      * ```
      */
-open func anonymous() -> USaintSession {
-    return try!  FfiConverterTypeUSaintSession.lift(try! rustCall() {
+open func anonymous() -> USaintSession  {
+    return try!  FfiConverterTypeUSaintSession_lift(try! rustCall() {
     uniffi_rusaint_ffi_fn_method_usaintsessionbuilder_anonymous(self.uniffiClonePointer(),$0
     )
 })
@@ -3833,7 +3869,7 @@ open func anonymous() -> USaintSession {
      * val withPassword = USaintSessionBuilder().withPassword("20211561", "password") // suspend
      * }
      */
-open func withPassword(id: String, password: String)async throws  -> USaintSession {
+open func withPassword(id: String, password: String)async throws  -> USaintSession  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -3845,8 +3881,8 @@ open func withPassword(id: String, password: String)async throws  -> USaintSessi
             pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeUSaintSession.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypeUSaintSession_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
@@ -3858,7 +3894,7 @@ open func withPassword(id: String, password: String)async throws  -> USaintSessi
      * val withToken = USaintSessionBuilder().withToken("<example sso token>") // suspend
      * }
      */
-open func withToken(id: String, token: String)async throws  -> USaintSession {
+open func withToken(id: String, token: String)async throws  -> USaintSession  {
     return
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
@@ -3870,13 +3906,14 @@ open func withToken(id: String, token: String)async throws  -> USaintSession {
             pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
             completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
-            liftFunc: FfiConverterTypeUSaintSession.lift,
-            errorHandler: FfiConverterTypeRusaintError.lift
+            liftFunc: FfiConverterTypeUSaintSession_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -3913,8 +3950,6 @@ public struct FfiConverterTypeUSaintSessionBuilder: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -3930,6 +3965,8 @@ public func FfiConverterTypeUSaintSessionBuilder_lower(_ value: USaintSessionBui
 }
 
 
+
+
 public struct YearSemester {
     public let year: UInt32
     public let semester: SemesterType
@@ -3942,6 +3979,9 @@ public struct YearSemester {
     }
 }
 
+#if compiler(>=6)
+extension YearSemester: Sendable {}
+#endif
 
 
 extension YearSemester: Equatable, Hashable {
@@ -3960,6 +4000,7 @@ extension YearSemester: Equatable, Hashable {
         hasher.combine(semester)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -3999,7 +4040,7 @@ public func FfiConverterTypeYearSemester_lower(_ value: YearSemester) -> RustBuf
 /**
  * Rusaint에서 반환하는 기본 오류
  */
-public enum RusaintError {
+public enum RusaintError: Swift.Error {
 
     
     
@@ -4045,13 +4086,34 @@ public struct FfiConverterTypeRusaintError: FfiConverterRustBuffer {
 }
 
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRusaintError_lift(_ buf: RustBuffer) throws -> RusaintError {
+    return try FfiConverterTypeRusaintError.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRusaintError_lower(_ value: RusaintError) -> RustBuffer {
+    return FfiConverterTypeRusaintError.lower(value)
+}
+
+
 extension RusaintError: Equatable, Hashable {}
+
+
+
 
 extension RusaintError: Foundation.LocalizedError {
     public var errorDescription: String? {
         String(reflecting: self)
     }
 }
+
+
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4276,52 +4338,6 @@ fileprivate struct FfiConverterDictionaryStringFloat: FfiConverterRustBuffer {
         return dict
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 private let UNIFFI_RUST_FUTURE_POLL_READY: Int8 = 0
 private let UNIFFI_RUST_FUTURE_POLL_MAYBE_READY: Int8 = 1
 
@@ -4335,9 +4351,9 @@ fileprivate func uniffiRustCallAsync<F, T>(
     liftFunc: (F) throws -> T,
     errorHandler: ((RustBuffer) throws -> Swift.Error)?
 ) async throws -> T {
-    // Make sure to call uniffiEnsureInitialized() since future creation doesn't have a
+    // Make sure to call the ensure init function since future creation doesn't have a
     // RustCallStatus param, so doesn't use makeRustCall()
-    uniffiEnsureInitialized()
+    uniffiEnsureRusaintFfiInitialized()
     let rustFuture = rustFutureFunc()
     defer {
         freeFunc(rustFuture)
@@ -4376,9 +4392,9 @@ private enum InitializationResult {
 }
 // Use a global variable to perform the versioning checks. Swift ensures that
 // the code inside is only computed once.
-private var initializationResult: InitializationResult = {
+private let initializationResult: InitializationResult = {
     // Get the bindings contract version from our ComponentInterface
-    let bindings_contract_version = 26
+    let bindings_contract_version = 29
     // Get the scaffolding contract version by calling the into the dylib
     let scaffolding_contract_version = ffi_rusaint_ffi_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
@@ -4556,10 +4572,13 @@ private var initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
 
+    uniffiEnsureRusaintInitialized()
     return InitializationResult.ok
 }()
 
-private func uniffiEnsureInitialized() {
+// Make the ensure init function public so that other modules which have external type references to
+// our types can call it.
+public func uniffiEnsureRusaintFfiInitialized() {
     switch initializationResult {
     case .ok:
         break

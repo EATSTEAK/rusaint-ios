@@ -281,7 +281,7 @@ private func makeRustCall<T, E: Swift.Error>(
     _ callback: (UnsafeMutablePointer<RustCallStatus>) -> T,
     errorHandler: ((RustBuffer) throws -> E)?
 ) throws -> T {
-    uniffiEnsureInitialized()
+    uniffiEnsureRusaintInitialized()
     var callStatus = RustCallStatus.init()
     let returnedVal = callback(&callStatus)
     try uniffiCheckCallStatus(callStatus: callStatus, errorHandler: errorHandler)
@@ -352,9 +352,10 @@ private func uniffiTraitInterfaceCallWithError<T, E>(
         callStatus.pointee.errorBuf = FfiConverterString.lower(String(describing: error))
     }
 }
-fileprivate class UniffiHandleMap<T> {
-    private var map: [UInt64: T] = [:]
+fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
+    // All mutation happens with this lock held, which is why we implement @unchecked Sendable.
     private let lock = NSLock()
+    private var map: [UInt64: T] = [:]
     private var currentHandle: UInt64 = 1
 
     func insert(obj: T) -> UInt64 {
@@ -533,7 +534,7 @@ fileprivate struct FfiConverterData: FfiConverterRustBuffer {
 /**
  * 새로운 `LectureCategory`를 만드는 빌더입니다.
  */
-public protocol LectureCategoryBuilderProtocol : AnyObject {
+public protocol LectureCategoryBuilderProtocol: AnyObject, Sendable {
     
     /**
      * 채플 분류의 [`LectureCategory`]를 만듭니다.
@@ -596,12 +597,10 @@ public protocol LectureCategoryBuilderProtocol : AnyObject {
     func unitedMajor(major: String)  -> LectureCategory
     
 }
-
 /**
  * 새로운 `LectureCategory`를 만드는 빌더입니다.
  */
-open class LectureCategoryBuilder:
-    LectureCategoryBuilderProtocol {
+open class LectureCategoryBuilder: LectureCategoryBuilderProtocol, @unchecked Sendable {
     fileprivate let pointer: UnsafeMutableRawPointer!
 
     /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
@@ -615,6 +614,9 @@ open class LectureCategoryBuilder:
     // TODO: We'd like this to be `private` but for Swifty reasons,
     // we can't implement `FfiConverter` without making this `required` and we can't
     // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
     required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
         self.pointer = pointer
     }
@@ -663,8 +665,8 @@ public convenience init() {
     /**
      * 채플 분류의 [`LectureCategory`]를 만듭니다.
      */
-open func chapel(lectureName: String) -> LectureCategory {
-    return try!  FfiConverterTypeLectureCategory.lift(try! rustCall() {
+open func chapel(lectureName: String) -> LectureCategory  {
+    return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
     uniffi_rusaint_fn_method_lecturecategorybuilder_chapel(self.uniffiClonePointer(),
         FfiConverterString.lower(lectureName),$0
     )
@@ -674,8 +676,8 @@ open func chapel(lectureName: String) -> LectureCategory {
     /**
      * 연계전공 분류의 [`LectureCategory`]를 만듭니다.
      */
-open func connectedMajor(major: String) -> LectureCategory {
-    return try!  FfiConverterTypeLectureCategory.lift(try! rustCall() {
+open func connectedMajor(major: String) -> LectureCategory  {
+    return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
     uniffi_rusaint_fn_method_lecturecategorybuilder_connected_major(self.uniffiClonePointer(),
         FfiConverterString.lower(major),$0
     )
@@ -685,8 +687,8 @@ open func connectedMajor(major: String) -> LectureCategory {
     /**
      * 숭실사이버대 분류의 [`LectureCategory`]를 만듭니다.
      */
-open func cyber() -> LectureCategory {
-    return try!  FfiConverterTypeLectureCategory.lift(try! rustCall() {
+open func cyber() -> LectureCategory  {
+    return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
     uniffi_rusaint_fn_method_lecturecategorybuilder_cyber(self.uniffiClonePointer(),$0
     )
 })
@@ -695,8 +697,8 @@ open func cyber() -> LectureCategory {
     /**
      * 교직 분류의 [`LectureCategory`]를 만듭니다.
      */
-open func education() -> LectureCategory {
-    return try!  FfiConverterTypeLectureCategory.lift(try! rustCall() {
+open func education() -> LectureCategory  {
+    return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
     uniffi_rusaint_fn_method_lecturecategorybuilder_education(self.uniffiClonePointer(),$0
     )
 })
@@ -705,8 +707,8 @@ open func education() -> LectureCategory {
     /**
      * 과목명으로 찾기 위한 [`LectureCategory`]를 만듭니다.
      */
-open func findByLecture(keyword: String) -> LectureCategory {
-    return try!  FfiConverterTypeLectureCategory.lift(try! rustCall() {
+open func findByLecture(keyword: String) -> LectureCategory  {
+    return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
     uniffi_rusaint_fn_method_lecturecategorybuilder_find_by_lecture(self.uniffiClonePointer(),
         FfiConverterString.lower(keyword),$0
     )
@@ -716,8 +718,8 @@ open func findByLecture(keyword: String) -> LectureCategory {
     /**
      * 교수명으로 찾기 위한 [`LectureCategory`]를 만듭니다.
      */
-open func findByProfessor(keyword: String) -> LectureCategory {
-    return try!  FfiConverterTypeLectureCategory.lift(try! rustCall() {
+open func findByProfessor(keyword: String) -> LectureCategory  {
+    return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
     uniffi_rusaint_fn_method_lecturecategorybuilder_find_by_professor(self.uniffiClonePointer(),
         FfiConverterString.lower(keyword),$0
     )
@@ -727,8 +729,8 @@ open func findByProfessor(keyword: String) -> LectureCategory {
     /**
      * 대학원 분류의 [`LectureCategory`]를 만듭니다.
      */
-open func graduated(collage: String, department: String) -> LectureCategory {
-    return try!  FfiConverterTypeLectureCategory.lift(try! rustCall() {
+open func graduated(collage: String, department: String) -> LectureCategory  {
+    return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
     uniffi_rusaint_fn_method_lecturecategorybuilder_graduated(self.uniffiClonePointer(),
         FfiConverterString.lower(collage),
         FfiConverterString.lower(department),$0
@@ -739,8 +741,8 @@ open func graduated(collage: String, department: String) -> LectureCategory {
     /**
      * 전공과목 분류의 [`LectureCategory`]를 만듭니다.
      */
-open func major(collage: String, department: String, major: String?) -> LectureCategory {
-    return try!  FfiConverterTypeLectureCategory.lift(try! rustCall() {
+open func major(collage: String, department: String, major: String?) -> LectureCategory  {
+    return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
     uniffi_rusaint_fn_method_lecturecategorybuilder_major(self.uniffiClonePointer(),
         FfiConverterString.lower(collage),
         FfiConverterString.lower(department),
@@ -752,8 +754,8 @@ open func major(collage: String, department: String, major: String?) -> LectureC
     /**
      * 교양선택 분류의 [`LectureCategory`]를 만듭니다.
      */
-open func optionalElective(category: String) -> LectureCategory {
-    return try!  FfiConverterTypeLectureCategory.lift(try! rustCall() {
+open func optionalElective(category: String) -> LectureCategory  {
+    return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
     uniffi_rusaint_fn_method_lecturecategorybuilder_optional_elective(self.uniffiClonePointer(),
         FfiConverterString.lower(category),$0
     )
@@ -763,8 +765,8 @@ open func optionalElective(category: String) -> LectureCategory {
     /**
      * 타전공인정과목 분류의 [`LectureCategory`]를 만듭니다.
      */
-open func recognizedOtherMajor(collage: String, department: String, major: String?) -> LectureCategory {
-    return try!  FfiConverterTypeLectureCategory.lift(try! rustCall() {
+open func recognizedOtherMajor(collage: String, department: String, major: String?) -> LectureCategory  {
+    return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
     uniffi_rusaint_fn_method_lecturecategorybuilder_recognized_other_major(self.uniffiClonePointer(),
         FfiConverterString.lower(collage),
         FfiConverterString.lower(department),
@@ -776,8 +778,8 @@ open func recognizedOtherMajor(collage: String, department: String, major: Strin
     /**
      * 교양필수 분류의 [`LectureCategory`]를 만듭니다.
      */
-open func requiredElective(lectureName: String) -> LectureCategory {
-    return try!  FfiConverterTypeLectureCategory.lift(try! rustCall() {
+open func requiredElective(lectureName: String) -> LectureCategory  {
+    return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
     uniffi_rusaint_fn_method_lecturecategorybuilder_required_elective(self.uniffiClonePointer(),
         FfiConverterString.lower(lectureName),$0
     )
@@ -787,8 +789,8 @@ open func requiredElective(lectureName: String) -> LectureCategory {
     /**
      * 융합전공 분류의 [`LectureCategory`]를 만듭니다.
      */
-open func unitedMajor(major: String) -> LectureCategory {
-    return try!  FfiConverterTypeLectureCategory.lift(try! rustCall() {
+open func unitedMajor(major: String) -> LectureCategory  {
+    return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
     uniffi_rusaint_fn_method_lecturecategorybuilder_united_major(self.uniffiClonePointer(),
         FfiConverterString.lower(major),$0
     )
@@ -797,6 +799,7 @@ open func unitedMajor(major: String) -> LectureCategory {
     
 
 }
+
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -833,8 +836,6 @@ public struct FfiConverterTypeLectureCategoryBuilder: FfiConverter {
 }
 
 
-
-
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -848,6 +849,8 @@ public func FfiConverterTypeLectureCategoryBuilder_lift(_ pointer: UnsafeMutable
 public func FfiConverterTypeLectureCategoryBuilder_lower(_ value: LectureCategoryBuilder) -> UnsafeMutableRawPointer {
     return FfiConverterTypeLectureCategoryBuilder.lower(value)
 }
+
+
 
 
 /**
@@ -883,6 +886,9 @@ public struct ChapelAbsenceRequest {
     }
 }
 
+#if compiler(>=6)
+extension ChapelAbsenceRequest: Sendable {}
+#endif
 
 
 extension ChapelAbsenceRequest: Equatable, Hashable {
@@ -937,6 +943,7 @@ extension ChapelAbsenceRequest: Equatable, Hashable {
         hasher.combine(status)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -1020,6 +1027,9 @@ public struct ChapelAttendance {
     }
 }
 
+#if compiler(>=6)
+extension ChapelAttendance: Sendable {}
+#endif
 
 
 extension ChapelAttendance: Equatable, Hashable {
@@ -1066,6 +1076,7 @@ extension ChapelAttendance: Equatable, Hashable {
         hasher.combine(note)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -1137,6 +1148,9 @@ public struct ChapelInformation {
     }
 }
 
+#if compiler(>=6)
+extension ChapelInformation: Sendable {}
+#endif
 
 
 extension ChapelInformation: Equatable, Hashable {
@@ -1167,6 +1181,7 @@ extension ChapelInformation: Equatable, Hashable {
         hasher.combine(absenceRequests)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -1216,11 +1231,11 @@ public struct ClassGrade {
     /**
      * 이수학년도
      */
-    public let year: String
+    public let year: UInt32
     /**
      * 이수학기
      */
-    public let semester: String
+    public let semester: SemesterType
     /**
      * 과목코드
      */
@@ -1255,10 +1270,10 @@ public struct ClassGrade {
     public init(
         /**
          * 이수학년도
-         */year: String, 
+         */year: UInt32, 
         /**
          * 이수학기
-         */semester: String, 
+         */semester: SemesterType, 
         /**
          * 과목코드
          */code: String, 
@@ -1292,6 +1307,9 @@ public struct ClassGrade {
     }
 }
 
+#if compiler(>=6)
+extension ClassGrade: Sendable {}
+#endif
 
 
 extension ClassGrade: Equatable, Hashable {
@@ -1340,6 +1358,7 @@ extension ClassGrade: Equatable, Hashable {
 }
 
 
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -1347,8 +1366,8 @@ public struct FfiConverterTypeClassGrade: FfiConverterRustBuffer {
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ClassGrade {
         return
             try ClassGrade(
-                year: FfiConverterString.read(from: &buf), 
-                semester: FfiConverterString.read(from: &buf), 
+                year: FfiConverterUInt32.read(from: &buf), 
+                semester: FfiConverterTypeSemesterType.read(from: &buf), 
                 code: FfiConverterString.read(from: &buf), 
                 className: FfiConverterString.read(from: &buf), 
                 gradePoints: FfiConverterFloat.read(from: &buf), 
@@ -1360,8 +1379,8 @@ public struct FfiConverterTypeClassGrade: FfiConverterRustBuffer {
     }
 
     public static func write(_ value: ClassGrade, into buf: inout [UInt8]) {
-        FfiConverterString.write(value.year, into: &buf)
-        FfiConverterString.write(value.semester, into: &buf)
+        FfiConverterUInt32.write(value.year, into: &buf)
+        FfiConverterTypeSemesterType.write(value.semester, into: &buf)
         FfiConverterString.write(value.code, into: &buf)
         FfiConverterString.write(value.className, into: &buf)
         FfiConverterFloat.write(value.gradePoints, into: &buf)
@@ -1407,6 +1426,9 @@ public struct CourseScheduleInformation {
     }
 }
 
+#if compiler(>=6)
+extension CourseScheduleInformation: Sendable {}
+#endif
 
 
 extension CourseScheduleInformation: Equatable, Hashable {
@@ -1433,6 +1455,7 @@ extension CourseScheduleInformation: Equatable, Hashable {
         hasher.combine(classroom)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -1500,6 +1523,9 @@ public struct GeneralChapelInformation {
     }
 }
 
+#if compiler(>=6)
+extension GeneralChapelInformation: Sendable {}
+#endif
 
 
 extension GeneralChapelInformation: Equatable, Hashable {
@@ -1542,6 +1568,7 @@ extension GeneralChapelInformation: Equatable, Hashable {
         hasher.combine(note)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -1609,7 +1636,7 @@ public struct GradeSummary {
     /**
      * 평점평균
      */
-    public let gradePointsAvarage: Float
+    public let gradePointsAverage: Float
     /**
      * 산술평균
      */
@@ -1633,7 +1660,7 @@ public struct GradeSummary {
          */gradePointsSum: Float, 
         /**
          * 평점평균
-         */gradePointsAvarage: Float, 
+         */gradePointsAverage: Float, 
         /**
          * 산술평균
          */arithmeticMean: Float, 
@@ -1643,12 +1670,15 @@ public struct GradeSummary {
         self.attemptedCredits = attemptedCredits
         self.earnedCredits = earnedCredits
         self.gradePointsSum = gradePointsSum
-        self.gradePointsAvarage = gradePointsAvarage
+        self.gradePointsAverage = gradePointsAverage
         self.arithmeticMean = arithmeticMean
         self.pfEarnedCredits = pfEarnedCredits
     }
 }
 
+#if compiler(>=6)
+extension GradeSummary: Sendable {}
+#endif
 
 
 extension GradeSummary: Equatable, Hashable {
@@ -1662,7 +1692,7 @@ extension GradeSummary: Equatable, Hashable {
         if lhs.gradePointsSum != rhs.gradePointsSum {
             return false
         }
-        if lhs.gradePointsAvarage != rhs.gradePointsAvarage {
+        if lhs.gradePointsAverage != rhs.gradePointsAverage {
             return false
         }
         if lhs.arithmeticMean != rhs.arithmeticMean {
@@ -1678,11 +1708,12 @@ extension GradeSummary: Equatable, Hashable {
         hasher.combine(attemptedCredits)
         hasher.combine(earnedCredits)
         hasher.combine(gradePointsSum)
-        hasher.combine(gradePointsAvarage)
+        hasher.combine(gradePointsAverage)
         hasher.combine(arithmeticMean)
         hasher.combine(pfEarnedCredits)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -1695,7 +1726,7 @@ public struct FfiConverterTypeGradeSummary: FfiConverterRustBuffer {
                 attemptedCredits: FfiConverterFloat.read(from: &buf), 
                 earnedCredits: FfiConverterFloat.read(from: &buf), 
                 gradePointsSum: FfiConverterFloat.read(from: &buf), 
-                gradePointsAvarage: FfiConverterFloat.read(from: &buf), 
+                gradePointsAverage: FfiConverterFloat.read(from: &buf), 
                 arithmeticMean: FfiConverterFloat.read(from: &buf), 
                 pfEarnedCredits: FfiConverterFloat.read(from: &buf)
         )
@@ -1705,7 +1736,7 @@ public struct FfiConverterTypeGradeSummary: FfiConverterRustBuffer {
         FfiConverterFloat.write(value.attemptedCredits, into: &buf)
         FfiConverterFloat.write(value.earnedCredits, into: &buf)
         FfiConverterFloat.write(value.gradePointsSum, into: &buf)
-        FfiConverterFloat.write(value.gradePointsAvarage, into: &buf)
+        FfiConverterFloat.write(value.gradePointsAverage, into: &buf)
         FfiConverterFloat.write(value.arithmeticMean, into: &buf)
         FfiConverterFloat.write(value.pfEarnedCredits, into: &buf)
     }
@@ -1752,6 +1783,9 @@ public struct GraduationRequirement {
     }
 }
 
+#if compiler(>=6)
+extension GraduationRequirement: Sendable {}
+#endif
 
 
 extension GraduationRequirement: Equatable, Hashable {
@@ -1790,6 +1824,7 @@ extension GraduationRequirement: Equatable, Hashable {
         hasher.combine(lectures)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -1851,6 +1886,9 @@ public struct GraduationRequirements {
     }
 }
 
+#if compiler(>=6)
+extension GraduationRequirements: Sendable {}
+#endif
 
 
 extension GraduationRequirements: Equatable, Hashable {
@@ -1869,6 +1907,7 @@ extension GraduationRequirements: Equatable, Hashable {
         hasher.combine(requirements)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -1940,6 +1979,9 @@ public struct GraduationStudent {
     }
 }
 
+#if compiler(>=6)
+extension GraduationStudent: Sendable {}
+#endif
 
 
 extension GraduationStudent: Equatable, Hashable {
@@ -1998,6 +2040,7 @@ extension GraduationStudent: Equatable, Hashable {
         hasher.combine(completedPoints)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -2185,6 +2228,9 @@ public struct Lecture {
     }
 }
 
+#if compiler(>=6)
+extension Lecture: Sendable {}
+#endif
 
 
 extension Lecture: Equatable, Hashable {
@@ -2255,6 +2301,7 @@ extension Lecture: Equatable, Hashable {
         hasher.combine(target)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -2348,6 +2395,9 @@ public struct LectureAssessmentResult {
     }
 }
 
+#if compiler(>=6)
+extension LectureAssessmentResult: Sendable {}
+#endif
 
 
 extension LectureAssessmentResult: Equatable, Hashable {
@@ -2398,6 +2448,7 @@ extension LectureAssessmentResult: Equatable, Hashable {
         hasher.combine(score)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -2463,6 +2514,9 @@ public struct PersonalCourseSchedule {
     }
 }
 
+#if compiler(>=6)
+extension PersonalCourseSchedule: Sendable {}
+#endif
 
 
 extension PersonalCourseSchedule: Equatable, Hashable {
@@ -2477,6 +2531,7 @@ extension PersonalCourseSchedule: Equatable, Hashable {
         hasher.combine(schedule)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -2550,6 +2605,9 @@ public struct Scholarship {
     }
 }
 
+#if compiler(>=6)
+extension Scholarship: Sendable {}
+#endif
 
 
 extension Scholarship: Equatable, Hashable {
@@ -2616,6 +2674,7 @@ extension Scholarship: Equatable, Hashable {
         hasher.combine(workedAt)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -2687,7 +2746,7 @@ public struct SemesterGrade {
     /**
      * 학기
      */
-    public let semester: String
+    public let semester: SemesterType
     /**
      * 신청학점
      */
@@ -2703,7 +2762,7 @@ public struct SemesterGrade {
     /**
      * 평점평균
      */
-    public let gradePointsAvarage: Float
+    public let gradePointsAverage: Float
     /**
      * 평점계
      */
@@ -2741,7 +2800,7 @@ public struct SemesterGrade {
          */year: UInt32, 
         /**
          * 학기
-         */semester: String, 
+         */semester: SemesterType, 
         /**
          * 신청학점
          */attemptedCredits: Float, 
@@ -2753,7 +2812,7 @@ public struct SemesterGrade {
          */pfEarnedCredits: Float, 
         /**
          * 평점평균
-         */gradePointsAvarage: Float, 
+         */gradePointsAverage: Float, 
         /**
          * 평점계
          */gradePointsSum: Float, 
@@ -2780,7 +2839,7 @@ public struct SemesterGrade {
         self.attemptedCredits = attemptedCredits
         self.earnedCredits = earnedCredits
         self.pfEarnedCredits = pfEarnedCredits
-        self.gradePointsAvarage = gradePointsAvarage
+        self.gradePointsAverage = gradePointsAverage
         self.gradePointsSum = gradePointsSum
         self.arithmeticMean = arithmeticMean
         self.semesterRank = semesterRank
@@ -2791,6 +2850,9 @@ public struct SemesterGrade {
     }
 }
 
+#if compiler(>=6)
+extension SemesterGrade: Sendable {}
+#endif
 
 
 extension SemesterGrade: Equatable, Hashable {
@@ -2810,7 +2872,7 @@ extension SemesterGrade: Equatable, Hashable {
         if lhs.pfEarnedCredits != rhs.pfEarnedCredits {
             return false
         }
-        if lhs.gradePointsAvarage != rhs.gradePointsAvarage {
+        if lhs.gradePointsAverage != rhs.gradePointsAverage {
             return false
         }
         if lhs.gradePointsSum != rhs.gradePointsSum {
@@ -2843,7 +2905,7 @@ extension SemesterGrade: Equatable, Hashable {
         hasher.combine(attemptedCredits)
         hasher.combine(earnedCredits)
         hasher.combine(pfEarnedCredits)
-        hasher.combine(gradePointsAvarage)
+        hasher.combine(gradePointsAverage)
         hasher.combine(gradePointsSum)
         hasher.combine(arithmeticMean)
         hasher.combine(semesterRank)
@@ -2855,6 +2917,7 @@ extension SemesterGrade: Equatable, Hashable {
 }
 
 
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -2863,11 +2926,11 @@ public struct FfiConverterTypeSemesterGrade: FfiConverterRustBuffer {
         return
             try SemesterGrade(
                 year: FfiConverterUInt32.read(from: &buf), 
-                semester: FfiConverterString.read(from: &buf), 
+                semester: FfiConverterTypeSemesterType.read(from: &buf), 
                 attemptedCredits: FfiConverterFloat.read(from: &buf), 
                 earnedCredits: FfiConverterFloat.read(from: &buf), 
                 pfEarnedCredits: FfiConverterFloat.read(from: &buf), 
-                gradePointsAvarage: FfiConverterFloat.read(from: &buf), 
+                gradePointsAverage: FfiConverterFloat.read(from: &buf), 
                 gradePointsSum: FfiConverterFloat.read(from: &buf), 
                 arithmeticMean: FfiConverterFloat.read(from: &buf), 
                 semesterRank: FfiConverterTypeU32Pair.read(from: &buf), 
@@ -2880,11 +2943,11 @@ public struct FfiConverterTypeSemesterGrade: FfiConverterRustBuffer {
 
     public static func write(_ value: SemesterGrade, into buf: inout [UInt8]) {
         FfiConverterUInt32.write(value.year, into: &buf)
-        FfiConverterString.write(value.semester, into: &buf)
+        FfiConverterTypeSemesterType.write(value.semester, into: &buf)
         FfiConverterFloat.write(value.attemptedCredits, into: &buf)
         FfiConverterFloat.write(value.earnedCredits, into: &buf)
         FfiConverterFloat.write(value.pfEarnedCredits, into: &buf)
-        FfiConverterFloat.write(value.gradePointsAvarage, into: &buf)
+        FfiConverterFloat.write(value.gradePointsAverage, into: &buf)
         FfiConverterFloat.write(value.gradePointsSum, into: &buf)
         FfiConverterFloat.write(value.arithmeticMean, into: &buf)
         FfiConverterTypeU32Pair.write(value.semesterRank, into: &buf)
@@ -2936,6 +2999,9 @@ public struct StudentAcademicRecord {
     }
 }
 
+#if compiler(>=6)
+extension StudentAcademicRecord: Sendable {}
+#endif
 
 
 extension StudentAcademicRecord: Equatable, Hashable {
@@ -2974,6 +3040,7 @@ extension StudentAcademicRecord: Equatable, Hashable {
         hasher.combine(processDate)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -3033,6 +3100,9 @@ public struct StudentAcademicRecords {
     }
 }
 
+#if compiler(>=6)
+extension StudentAcademicRecords: Sendable {}
+#endif
 
 
 extension StudentAcademicRecords: Equatable, Hashable {
@@ -3047,6 +3117,7 @@ extension StudentAcademicRecords: Equatable, Hashable {
         hasher.combine(records)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -3098,6 +3169,9 @@ public struct StudentBankAccount {
     }
 }
 
+#if compiler(>=6)
+extension StudentBankAccount: Sendable {}
+#endif
 
 
 extension StudentBankAccount: Equatable, Hashable {
@@ -3120,6 +3194,7 @@ extension StudentBankAccount: Equatable, Hashable {
         hasher.combine(holder)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -3171,6 +3246,9 @@ public struct StudentFamily {
     }
 }
 
+#if compiler(>=6)
+extension StudentFamily: Sendable {}
+#endif
 
 
 extension StudentFamily: Equatable, Hashable {
@@ -3185,6 +3263,7 @@ extension StudentFamily: Equatable, Hashable {
         hasher.combine(members)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -3248,6 +3327,9 @@ public struct StudentFamilyMember {
     }
 }
 
+#if compiler(>=6)
+extension StudentFamilyMember: Sendable {}
+#endif
 
 
 extension StudentFamilyMember: Equatable, Hashable {
@@ -3294,6 +3376,7 @@ extension StudentFamilyMember: Equatable, Hashable {
         hasher.combine(isCohabit)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -3361,6 +3444,9 @@ public struct StudentForignStudyInformation {
     }
 }
 
+#if compiler(>=6)
+extension StudentForignStudyInformation: Sendable {}
+#endif
 
 
 extension StudentForignStudyInformation: Equatable, Hashable {
@@ -3383,6 +3469,7 @@ extension StudentForignStudyInformation: Equatable, Hashable {
         hasher.combine(issueDate)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -3452,6 +3539,9 @@ public struct StudentGraduation {
     }
 }
 
+#if compiler(>=6)
+extension StudentGraduation: Sendable {}
+#endif
 
 
 extension StudentGraduation: Equatable, Hashable {
@@ -3502,6 +3592,7 @@ extension StudentGraduation: Equatable, Hashable {
         hasher.combine(graduationPersonnelNumber)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -3619,6 +3710,9 @@ public struct StudentInformation {
     }
 }
 
+#if compiler(>=6)
+extension StudentInformation: Sendable {}
+#endif
 
 
 extension StudentInformation: Equatable, Hashable {
@@ -3739,6 +3833,7 @@ extension StudentInformation: Equatable, Hashable {
 }
 
 
+
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
@@ -3842,6 +3937,9 @@ public struct StudentLifelongInformation {
     }
 }
 
+#if compiler(>=6)
+extension StudentLifelongInformation: Sendable {}
+#endif
 
 
 extension StudentLifelongInformation: Equatable, Hashable {
@@ -3868,6 +3966,7 @@ extension StudentLifelongInformation: Equatable, Hashable {
         hasher.combine(qualificationDate)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -3927,6 +4026,9 @@ public struct StudentQualification {
     }
 }
 
+#if compiler(>=6)
+extension StudentQualification: Sendable {}
+#endif
 
 
 extension StudentQualification: Equatable, Hashable {
@@ -3953,6 +4055,7 @@ extension StudentQualification: Equatable, Hashable {
         hasher.combine(forignStudy)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -4032,6 +4135,9 @@ public struct StudentReligion {
     }
 }
 
+#if compiler(>=6)
+extension StudentReligion: Sendable {}
+#endif
 
 
 extension StudentReligion: Equatable, Hashable {
@@ -4098,6 +4204,7 @@ extension StudentReligion: Equatable, Hashable {
         hasher.combine(churchGrp)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -4175,6 +4282,9 @@ public struct StudentResearchBankAccount {
     }
 }
 
+#if compiler(>=6)
+extension StudentResearchBankAccount: Sendable {}
+#endif
 
 
 extension StudentResearchBankAccount: Equatable, Hashable {
@@ -4197,6 +4307,7 @@ extension StudentResearchBankAccount: Equatable, Hashable {
         hasher.combine(holder)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -4254,6 +4365,9 @@ public struct StudentTeachingMajorInformation {
     }
 }
 
+#if compiler(>=6)
+extension StudentTeachingMajorInformation: Sendable {}
+#endif
 
 
 extension StudentTeachingMajorInformation: Equatable, Hashable {
@@ -4280,6 +4394,7 @@ extension StudentTeachingMajorInformation: Equatable, Hashable {
         hasher.combine(qualificationDate)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -4337,6 +4452,9 @@ public struct StudentTeachingPluralMajorInformation {
     }
 }
 
+#if compiler(>=6)
+extension StudentTeachingPluralMajorInformation: Sendable {}
+#endif
 
 
 extension StudentTeachingPluralMajorInformation: Equatable, Hashable {
@@ -4359,6 +4477,7 @@ extension StudentTeachingPluralMajorInformation: Equatable, Hashable {
         hasher.combine(qualificationDate)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -4420,6 +4539,9 @@ public struct StudentTransferRecord {
     }
 }
 
+#if compiler(>=6)
+extension StudentTransferRecord: Sendable {}
+#endif
 
 
 extension StudentTransferRecord: Equatable, Hashable {
@@ -4454,6 +4576,7 @@ extension StudentTransferRecord: Equatable, Hashable {
         hasher.combine(acceptedTerms)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -4511,6 +4634,9 @@ public struct StudentTransferRecords {
     }
 }
 
+#if compiler(>=6)
+extension StudentTransferRecords: Sendable {}
+#endif
 
 
 extension StudentTransferRecords: Equatable, Hashable {
@@ -4525,6 +4651,7 @@ extension StudentTransferRecords: Equatable, Hashable {
         hasher.combine(records)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -4590,6 +4717,9 @@ public struct StudentWorkInformation {
     }
 }
 
+#if compiler(>=6)
+extension StudentWorkInformation: Sendable {}
+#endif
 
 
 extension StudentWorkInformation: Equatable, Hashable {
@@ -4640,6 +4770,7 @@ extension StudentWorkInformation: Equatable, Hashable {
         hasher.combine(faxNumber)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -4707,6 +4838,9 @@ public struct UnsignedIntPair {
     }
 }
 
+#if compiler(>=6)
+extension UnsignedIntPair: Sendable {}
+#endif
 
 
 extension UnsignedIntPair: Equatable, Hashable {
@@ -4725,6 +4859,7 @@ extension UnsignedIntPair: Equatable, Hashable {
         hasher.combine(second)
     }
 }
+
 
 
 #if swift(>=5.8)
@@ -4787,6 +4922,10 @@ public enum ClassScore {
     case empty
 }
 
+
+#if compiler(>=6)
+extension ClassScore: Sendable {}
+#endif
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4851,8 +4990,10 @@ public func FfiConverterTypeClassScore_lower(_ value: ClassScore) -> RustBuffer 
 }
 
 
-
 extension ClassScore: Equatable, Hashable {}
+
+
+
 
 
 
@@ -4886,6 +5027,10 @@ public enum CourseType {
     case bachelor
 }
 
+
+#if compiler(>=6)
+extension CourseType: Sendable {}
+#endif
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4954,8 +5099,10 @@ public func FfiConverterTypeCourseType_lower(_ value: CourseType) -> RustBuffer 
 }
 
 
-
 extension CourseType: Equatable, Hashable {}
+
+
+
 
 
 
@@ -5072,6 +5219,10 @@ public enum LectureCategory {
     case cyber
 }
 
+
+#if compiler(>=6)
+extension LectureCategory: Sendable {}
+#endif
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -5207,8 +5358,10 @@ public func FfiConverterTypeLectureCategory_lower(_ value: LectureCategory) -> R
 }
 
 
-
 extension LectureCategory: Equatable, Hashable {}
+
+
+
 
 
 
@@ -5240,6 +5393,10 @@ public enum SemesterType {
     case winter
 }
 
+
+#if compiler(>=6)
+extension SemesterType: Sendable {}
+#endif
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -5302,8 +5459,10 @@ public func FfiConverterTypeSemesterType_lower(_ value: SemesterType) -> RustBuf
 }
 
 
-
 extension SemesterType: Equatable, Hashable {}
+
+
+
 
 
 
@@ -5345,6 +5504,10 @@ public enum Weekday {
     case sun
 }
 
+
+#if compiler(>=6)
+extension Weekday: Sendable {}
+#endif
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -5425,8 +5588,10 @@ public func FfiConverterTypeWeekday_lower(_ value: Weekday) -> RustBuffer {
 }
 
 
-
 extension Weekday: Equatable, Hashable {}
+
+
+
 
 
 
@@ -5895,11 +6060,11 @@ public struct FfiConverterTypeU32Pair: FfiConverter {
     }
 
     public static func lift(_ value: RustBuffer) throws -> U32Pair {
-        return try FfiConverterTypeUnsignedIntPair.lift(value)
+        return try FfiConverterTypeUnsignedIntPair_lift(value)
     }
 
     public static func lower(_ value: U32Pair) -> RustBuffer {
-        return FfiConverterTypeUnsignedIntPair.lower(value)
+        return FfiConverterTypeUnsignedIntPair_lower(value)
     }
 }
 
@@ -5926,9 +6091,9 @@ private enum InitializationResult {
 }
 // Use a global variable to perform the versioning checks. Swift ensures that
 // the code inside is only computed once.
-private var initializationResult: InitializationResult = {
+private let initializationResult: InitializationResult = {
     // Get the bindings contract version from our ComponentInterface
-    let bindings_contract_version = 26
+    let bindings_contract_version = 29
     // Get the scaffolding contract version by calling the into the dylib
     let scaffolding_contract_version = ffi_rusaint_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
@@ -5977,7 +6142,9 @@ private var initializationResult: InitializationResult = {
     return InitializationResult.ok
 }()
 
-private func uniffiEnsureInitialized() {
+// Make the ensure init function public so that other modules which have external type references to
+// our types can call it.
+public func uniffiEnsureRusaintInitialized() {
     switch initializationResult {
     case .ok:
         break
