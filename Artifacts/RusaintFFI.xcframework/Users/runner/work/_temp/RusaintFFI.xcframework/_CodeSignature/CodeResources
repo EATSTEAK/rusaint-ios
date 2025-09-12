@@ -18,7 +18,7 @@
 		</data>
 		<key>ios-arm64/librusaint_ffi.a</key>
 		<data>
-		j/EWZuATFk4yao0mmsE85S24jnc=
+		GG4bDw6xcakimW/GByGR1/g+o/k=
 		</data>
 		<key>ios-arm64_x86_64-simulator/Headers/RusaintBaseFFI.h</key>
 		<data>
@@ -34,7 +34,7 @@
 		</data>
 		<key>ios-arm64_x86_64-simulator/librusaint_ffi.a</key>
 		<data>
-		bt48MkUmRRR0Ni3IPNJWAuJf/Wc=
+		vQ/+uoxGtCIPASaDEnWkcMi9eoA=
 		</data>
 	</dict>
 	<key>files2</key>
@@ -76,11 +76,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			j/EWZuATFk4yao0mmsE85S24jnc=
+			GG4bDw6xcakimW/GByGR1/g+o/k=
 			</data>
 			<key>hash2</key>
 			<data>
-			pSnqTH3qusVQ5CzdbHwLUJ/6CWqoDHtPYPAdQN+On7A=
+			QAl9lKNsxlLi2geLSegn7R5EMjXnLMVuLNPhMLV6PKY=
 			</data>
 		</dict>
 		<key>ios-arm64_x86_64-simulator/Headers/RusaintBaseFFI.h</key>
@@ -120,11 +120,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			bt48MkUmRRR0Ni3IPNJWAuJf/Wc=
+			vQ/+uoxGtCIPASaDEnWkcMi9eoA=
 			</data>
 			<key>hash2</key>
 			<data>
-			2ZG6jsTm2oJgh8FGFvt4ZaN3+20bJiL9sAkTfGb9spI=
+			JIxd0J/VYS4L+HyhTMz+Hj6lpX5MCGU3k3N1NSfFTuM=
 			</data>
 		</dict>
 	</dict>
