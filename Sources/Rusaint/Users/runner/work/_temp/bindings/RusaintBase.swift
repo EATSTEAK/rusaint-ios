@@ -352,19 +352,29 @@ private func uniffiTraitInterfaceCallWithError<T, E>(
         callStatus.pointee.errorBuf = FfiConverterString.lower(String(describing: error))
     }
 }
+// Initial value and increment amount for handles. 
+// These ensure that SWIFT handles always have the lowest bit set
+fileprivate let UNIFFI_HANDLEMAP_INITIAL: UInt64 = 1
+fileprivate let UNIFFI_HANDLEMAP_DELTA: UInt64 = 2
+
 fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
     // All mutation happens with this lock held, which is why we implement @unchecked Sendable.
     private let lock = NSLock()
     private var map: [UInt64: T] = [:]
-    private var currentHandle: UInt64 = 1
+    private var currentHandle: UInt64 = UNIFFI_HANDLEMAP_INITIAL
 
     func insert(obj: T) -> UInt64 {
         lock.withLock {
-            let handle = currentHandle
-            currentHandle += 1
-            map[handle] = obj
-            return handle
+            return doInsert(obj)
         }
+    }
+
+    // Low-level insert function, this assumes `lock` is held.
+    private func doInsert(_ obj: T) -> UInt64 {
+        let handle = currentHandle
+        currentHandle += UNIFFI_HANDLEMAP_DELTA
+        map[handle] = obj
+        return handle
     }
 
      func get(handle: UInt64) throws -> T {
@@ -373,6 +383,15 @@ fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
                 throw UniffiInternalError.unexpectedStaleHandle
             }
             return obj
+        }
+    }
+
+     func clone(handle: UInt64) throws -> UInt64 {
+        try lock.withLock {
+            guard let obj = map[handle] else {
+                throw UniffiInternalError.unexpectedStaleHandle
+            }
+            return doInsert(obj)
         }
     }
 
@@ -601,13 +620,13 @@ public protocol LectureCategoryBuilderProtocol: AnyObject, Sendable {
  * 새로운 `LectureCategory`를 만드는 빌더입니다.
  */
 open class LectureCategoryBuilder: LectureCategoryBuilderProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -617,46 +636,42 @@ open class LectureCategoryBuilder: LectureCategoryBuilderProtocol, @unchecked Se
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_fn_clone_lecturecategorybuilder(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_fn_clone_lecturecategorybuilder(self.handle, $0) }
     }
     /**
      * `LectureCategoryBuilder`를 만듭니다.
      */
 public convenience init() {
-    let pointer =
+    let handle =
         try! rustCall() {
     uniffi_rusaint_fn_constructor_lecturecategorybuilder_new($0
     )
 }
-    self.init(unsafeFromRawPointer: pointer)
+    self.init(unsafeFromHandle: handle)
 }
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_fn_free_lecturecategorybuilder(pointer, $0) }
+        try! rustCall { uniffi_rusaint_fn_free_lecturecategorybuilder(handle, $0) }
     }
 
     
@@ -667,7 +682,8 @@ public convenience init() {
      */
 open func chapel(lectureName: String) -> LectureCategory  {
     return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
-    uniffi_rusaint_fn_method_lecturecategorybuilder_chapel(self.uniffiClonePointer(),
+    uniffi_rusaint_fn_method_lecturecategorybuilder_chapel(
+            self.uniffiCloneHandle(),
         FfiConverterString.lower(lectureName),$0
     )
 })
@@ -678,7 +694,8 @@ open func chapel(lectureName: String) -> LectureCategory  {
      */
 open func connectedMajor(major: String) -> LectureCategory  {
     return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
-    uniffi_rusaint_fn_method_lecturecategorybuilder_connected_major(self.uniffiClonePointer(),
+    uniffi_rusaint_fn_method_lecturecategorybuilder_connected_major(
+            self.uniffiCloneHandle(),
         FfiConverterString.lower(major),$0
     )
 })
@@ -689,7 +706,8 @@ open func connectedMajor(major: String) -> LectureCategory  {
      */
 open func cyber() -> LectureCategory  {
     return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
-    uniffi_rusaint_fn_method_lecturecategorybuilder_cyber(self.uniffiClonePointer(),$0
+    uniffi_rusaint_fn_method_lecturecategorybuilder_cyber(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -699,7 +717,8 @@ open func cyber() -> LectureCategory  {
      */
 open func education() -> LectureCategory  {
     return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
-    uniffi_rusaint_fn_method_lecturecategorybuilder_education(self.uniffiClonePointer(),$0
+    uniffi_rusaint_fn_method_lecturecategorybuilder_education(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -709,7 +728,8 @@ open func education() -> LectureCategory  {
      */
 open func findByLecture(keyword: String) -> LectureCategory  {
     return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
-    uniffi_rusaint_fn_method_lecturecategorybuilder_find_by_lecture(self.uniffiClonePointer(),
+    uniffi_rusaint_fn_method_lecturecategorybuilder_find_by_lecture(
+            self.uniffiCloneHandle(),
         FfiConverterString.lower(keyword),$0
     )
 })
@@ -720,7 +740,8 @@ open func findByLecture(keyword: String) -> LectureCategory  {
      */
 open func findByProfessor(keyword: String) -> LectureCategory  {
     return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
-    uniffi_rusaint_fn_method_lecturecategorybuilder_find_by_professor(self.uniffiClonePointer(),
+    uniffi_rusaint_fn_method_lecturecategorybuilder_find_by_professor(
+            self.uniffiCloneHandle(),
         FfiConverterString.lower(keyword),$0
     )
 })
@@ -731,7 +752,8 @@ open func findByProfessor(keyword: String) -> LectureCategory  {
      */
 open func graduated(collage: String, department: String) -> LectureCategory  {
     return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
-    uniffi_rusaint_fn_method_lecturecategorybuilder_graduated(self.uniffiClonePointer(),
+    uniffi_rusaint_fn_method_lecturecategorybuilder_graduated(
+            self.uniffiCloneHandle(),
         FfiConverterString.lower(collage),
         FfiConverterString.lower(department),$0
     )
@@ -743,7 +765,8 @@ open func graduated(collage: String, department: String) -> LectureCategory  {
      */
 open func major(collage: String, department: String, major: String?) -> LectureCategory  {
     return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
-    uniffi_rusaint_fn_method_lecturecategorybuilder_major(self.uniffiClonePointer(),
+    uniffi_rusaint_fn_method_lecturecategorybuilder_major(
+            self.uniffiCloneHandle(),
         FfiConverterString.lower(collage),
         FfiConverterString.lower(department),
         FfiConverterOptionString.lower(major),$0
@@ -756,7 +779,8 @@ open func major(collage: String, department: String, major: String?) -> LectureC
      */
 open func optionalElective(category: String) -> LectureCategory  {
     return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
-    uniffi_rusaint_fn_method_lecturecategorybuilder_optional_elective(self.uniffiClonePointer(),
+    uniffi_rusaint_fn_method_lecturecategorybuilder_optional_elective(
+            self.uniffiCloneHandle(),
         FfiConverterString.lower(category),$0
     )
 })
@@ -767,7 +791,8 @@ open func optionalElective(category: String) -> LectureCategory  {
      */
 open func recognizedOtherMajor(collage: String, department: String, major: String?) -> LectureCategory  {
     return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
-    uniffi_rusaint_fn_method_lecturecategorybuilder_recognized_other_major(self.uniffiClonePointer(),
+    uniffi_rusaint_fn_method_lecturecategorybuilder_recognized_other_major(
+            self.uniffiCloneHandle(),
         FfiConverterString.lower(collage),
         FfiConverterString.lower(department),
         FfiConverterOptionString.lower(major),$0
@@ -780,7 +805,8 @@ open func recognizedOtherMajor(collage: String, department: String, major: Strin
      */
 open func requiredElective(lectureName: String) -> LectureCategory  {
     return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
-    uniffi_rusaint_fn_method_lecturecategorybuilder_required_elective(self.uniffiClonePointer(),
+    uniffi_rusaint_fn_method_lecturecategorybuilder_required_elective(
+            self.uniffiCloneHandle(),
         FfiConverterString.lower(lectureName),$0
     )
 })
@@ -791,13 +817,15 @@ open func requiredElective(lectureName: String) -> LectureCategory  {
      */
 open func unitedMajor(major: String) -> LectureCategory  {
     return try!  FfiConverterTypeLectureCategory_lift(try! rustCall() {
-    uniffi_rusaint_fn_method_lecturecategorybuilder_united_major(self.uniffiClonePointer(),
+    uniffi_rusaint_fn_method_lecturecategorybuilder_united_major(
+            self.uniffiCloneHandle(),
         FfiConverterString.lower(major),$0
     )
 })
 }
     
 
+    
 }
 
 
@@ -805,33 +833,24 @@ open func unitedMajor(major: String) -> LectureCategory  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeLectureCategoryBuilder: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = LectureCategoryBuilder
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> LectureCategoryBuilder {
-        return LectureCategoryBuilder(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> LectureCategoryBuilder {
+        return LectureCategoryBuilder(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: LectureCategoryBuilder) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: LectureCategoryBuilder) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LectureCategoryBuilder {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: LectureCategoryBuilder, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -839,14 +858,14 @@ public struct FfiConverterTypeLectureCategoryBuilder: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeLectureCategoryBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> LectureCategoryBuilder {
-    return try FfiConverterTypeLectureCategoryBuilder.lift(pointer)
+public func FfiConverterTypeLectureCategoryBuilder_lift(_ handle: UInt64) throws -> LectureCategoryBuilder {
+    return try FfiConverterTypeLectureCategoryBuilder.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeLectureCategoryBuilder_lower(_ value: LectureCategoryBuilder) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeLectureCategoryBuilder_lower(_ value: LectureCategoryBuilder) -> UInt64 {
     return FfiConverterTypeLectureCategoryBuilder.lower(value)
 }
 
@@ -856,7 +875,7 @@ public func FfiConverterTypeLectureCategoryBuilder_lower(_ value: LectureCategor
 /**
  * 채플 결석신청 정보
  */
-public struct ChapelAbsenceRequest {
+public struct ChapelAbsenceRequest: Equatable, Hashable {
     public let year: UInt32
     public let semester: SemesterType
     public let absenceDetail: String
@@ -884,67 +903,13 @@ public struct ChapelAbsenceRequest {
         self.denialReason = denialReason
         self.status = status
     }
+
+    
 }
 
 #if compiler(>=6)
 extension ChapelAbsenceRequest: Sendable {}
 #endif
-
-
-extension ChapelAbsenceRequest: Equatable, Hashable {
-    public static func ==(lhs: ChapelAbsenceRequest, rhs: ChapelAbsenceRequest) -> Bool {
-        if lhs.year != rhs.year {
-            return false
-        }
-        if lhs.semester != rhs.semester {
-            return false
-        }
-        if lhs.absenceDetail != rhs.absenceDetail {
-            return false
-        }
-        if lhs.absenceStart != rhs.absenceStart {
-            return false
-        }
-        if lhs.absenceEnd != rhs.absenceEnd {
-            return false
-        }
-        if lhs.absenceReasonKr != rhs.absenceReasonKr {
-            return false
-        }
-        if lhs.absenceReasonEn != rhs.absenceReasonEn {
-            return false
-        }
-        if lhs.applicationDate != rhs.applicationDate {
-            return false
-        }
-        if lhs.approvalDate != rhs.approvalDate {
-            return false
-        }
-        if lhs.denialReason != rhs.denialReason {
-            return false
-        }
-        if lhs.status != rhs.status {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(year)
-        hasher.combine(semester)
-        hasher.combine(absenceDetail)
-        hasher.combine(absenceStart)
-        hasher.combine(absenceEnd)
-        hasher.combine(absenceReasonKr)
-        hasher.combine(absenceReasonEn)
-        hasher.combine(applicationDate)
-        hasher.combine(approvalDate)
-        hasher.combine(denialReason)
-        hasher.combine(status)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1001,7 +966,7 @@ public func FfiConverterTypeChapelAbsenceRequest_lower(_ value: ChapelAbsenceReq
 /**
  * 채플 수업별 출석정보
  */
-public struct ChapelAttendance {
+public struct ChapelAttendance: Equatable, Hashable {
     public let division: UInt32
     public let classDate: String
     public let category: String
@@ -1025,59 +990,13 @@ public struct ChapelAttendance {
         self.result = result
         self.note = note
     }
+
+    
 }
 
 #if compiler(>=6)
 extension ChapelAttendance: Sendable {}
 #endif
-
-
-extension ChapelAttendance: Equatable, Hashable {
-    public static func ==(lhs: ChapelAttendance, rhs: ChapelAttendance) -> Bool {
-        if lhs.division != rhs.division {
-            return false
-        }
-        if lhs.classDate != rhs.classDate {
-            return false
-        }
-        if lhs.category != rhs.category {
-            return false
-        }
-        if lhs.instructor != rhs.instructor {
-            return false
-        }
-        if lhs.instructorDepartment != rhs.instructorDepartment {
-            return false
-        }
-        if lhs.title != rhs.title {
-            return false
-        }
-        if lhs.attendance != rhs.attendance {
-            return false
-        }
-        if lhs.result != rhs.result {
-            return false
-        }
-        if lhs.note != rhs.note {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(division)
-        hasher.combine(classDate)
-        hasher.combine(category)
-        hasher.combine(instructor)
-        hasher.combine(instructorDepartment)
-        hasher.combine(title)
-        hasher.combine(attendance)
-        hasher.combine(result)
-        hasher.combine(note)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1130,7 +1049,7 @@ public func FfiConverterTypeChapelAttendance_lower(_ value: ChapelAttendance) ->
 /**
  * 학기별 채플 정보
  */
-public struct ChapelInformation {
+public struct ChapelInformation: Equatable, Hashable {
     public let year: UInt32
     public let semester: SemesterType
     public let generalInformation: GeneralChapelInformation
@@ -1146,43 +1065,13 @@ public struct ChapelInformation {
         self.attendances = attendances
         self.absenceRequests = absenceRequests
     }
+
+    
 }
 
 #if compiler(>=6)
 extension ChapelInformation: Sendable {}
 #endif
-
-
-extension ChapelInformation: Equatable, Hashable {
-    public static func ==(lhs: ChapelInformation, rhs: ChapelInformation) -> Bool {
-        if lhs.year != rhs.year {
-            return false
-        }
-        if lhs.semester != rhs.semester {
-            return false
-        }
-        if lhs.generalInformation != rhs.generalInformation {
-            return false
-        }
-        if lhs.attendances != rhs.attendances {
-            return false
-        }
-        if lhs.absenceRequests != rhs.absenceRequests {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(year)
-        hasher.combine(semester)
-        hasher.combine(generalInformation)
-        hasher.combine(attendances)
-        hasher.combine(absenceRequests)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1227,7 +1116,7 @@ public func FfiConverterTypeChapelInformation_lower(_ value: ChapelInformation) 
 /**
  * 과목별 성적
  */
-public struct ClassGrade {
+public struct ClassGrade: Equatable, Hashable {
     /**
      * 이수학년도
      */
@@ -1305,59 +1194,13 @@ public struct ClassGrade {
         self.professor = professor
         self.detail = detail
     }
+
+    
 }
 
 #if compiler(>=6)
 extension ClassGrade: Sendable {}
 #endif
-
-
-extension ClassGrade: Equatable, Hashable {
-    public static func ==(lhs: ClassGrade, rhs: ClassGrade) -> Bool {
-        if lhs.year != rhs.year {
-            return false
-        }
-        if lhs.semester != rhs.semester {
-            return false
-        }
-        if lhs.code != rhs.code {
-            return false
-        }
-        if lhs.className != rhs.className {
-            return false
-        }
-        if lhs.gradePoints != rhs.gradePoints {
-            return false
-        }
-        if lhs.score != rhs.score {
-            return false
-        }
-        if lhs.rank != rhs.rank {
-            return false
-        }
-        if lhs.professor != rhs.professor {
-            return false
-        }
-        if lhs.detail != rhs.detail {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(year)
-        hasher.combine(semester)
-        hasher.combine(code)
-        hasher.combine(className)
-        hasher.combine(gradePoints)
-        hasher.combine(score)
-        hasher.combine(rank)
-        hasher.combine(professor)
-        hasher.combine(detail)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1410,7 +1253,7 @@ public func FfiConverterTypeClassGrade_lower(_ value: ClassGrade) -> RustBuffer 
 /**
  * 강의의 시간표 정보입니다.
  */
-public struct CourseScheduleInformation {
+public struct CourseScheduleInformation: Equatable, Hashable {
     public let name: String
     public let professor: String
     public let time: String
@@ -1424,39 +1267,13 @@ public struct CourseScheduleInformation {
         self.time = time
         self.classroom = classroom
     }
+
+    
 }
 
 #if compiler(>=6)
 extension CourseScheduleInformation: Sendable {}
 #endif
-
-
-extension CourseScheduleInformation: Equatable, Hashable {
-    public static func ==(lhs: CourseScheduleInformation, rhs: CourseScheduleInformation) -> Bool {
-        if lhs.name != rhs.name {
-            return false
-        }
-        if lhs.professor != rhs.professor {
-            return false
-        }
-        if lhs.time != rhs.time {
-            return false
-        }
-        if lhs.classroom != rhs.classroom {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(name)
-        hasher.combine(professor)
-        hasher.combine(time)
-        hasher.combine(classroom)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1499,7 +1316,7 @@ public func FfiConverterTypeCourseScheduleInformation_lower(_ value: CourseSched
 /**
  * 채플 기본 정보(좌석번호, 결석현황, 성적결과)
  */
-public struct GeneralChapelInformation {
+public struct GeneralChapelInformation: Equatable, Hashable {
     public let division: UInt32
     public let chapelTime: String
     public let chapelRoom: String
@@ -1521,55 +1338,13 @@ public struct GeneralChapelInformation {
         self.result = result
         self.note = note
     }
+
+    
 }
 
 #if compiler(>=6)
 extension GeneralChapelInformation: Sendable {}
 #endif
-
-
-extension GeneralChapelInformation: Equatable, Hashable {
-    public static func ==(lhs: GeneralChapelInformation, rhs: GeneralChapelInformation) -> Bool {
-        if lhs.division != rhs.division {
-            return false
-        }
-        if lhs.chapelTime != rhs.chapelTime {
-            return false
-        }
-        if lhs.chapelRoom != rhs.chapelRoom {
-            return false
-        }
-        if lhs.floorLevel != rhs.floorLevel {
-            return false
-        }
-        if lhs.seatNumber != rhs.seatNumber {
-            return false
-        }
-        if lhs.absenceTime != rhs.absenceTime {
-            return false
-        }
-        if lhs.result != rhs.result {
-            return false
-        }
-        if lhs.note != rhs.note {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(division)
-        hasher.combine(chapelTime)
-        hasher.combine(chapelRoom)
-        hasher.combine(floorLevel)
-        hasher.combine(seatNumber)
-        hasher.combine(absenceTime)
-        hasher.combine(result)
-        hasher.combine(note)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1620,7 +1395,7 @@ public func FfiConverterTypeGeneralChapelInformation_lower(_ value: GeneralChape
 /**
  * 전체 성적(학적부, 증명)
  */
-public struct GradeSummary {
+public struct GradeSummary: Equatable, Hashable {
     /**
      * 신청학점
      */
@@ -1674,47 +1449,13 @@ public struct GradeSummary {
         self.arithmeticMean = arithmeticMean
         self.pfEarnedCredits = pfEarnedCredits
     }
+
+    
 }
 
 #if compiler(>=6)
 extension GradeSummary: Sendable {}
 #endif
-
-
-extension GradeSummary: Equatable, Hashable {
-    public static func ==(lhs: GradeSummary, rhs: GradeSummary) -> Bool {
-        if lhs.attemptedCredits != rhs.attemptedCredits {
-            return false
-        }
-        if lhs.earnedCredits != rhs.earnedCredits {
-            return false
-        }
-        if lhs.gradePointsSum != rhs.gradePointsSum {
-            return false
-        }
-        if lhs.gradePointsAverage != rhs.gradePointsAverage {
-            return false
-        }
-        if lhs.arithmeticMean != rhs.arithmeticMean {
-            return false
-        }
-        if lhs.pfEarnedCredits != rhs.pfEarnedCredits {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(attemptedCredits)
-        hasher.combine(earnedCredits)
-        hasher.combine(gradePointsSum)
-        hasher.combine(gradePointsAverage)
-        hasher.combine(arithmeticMean)
-        hasher.combine(pfEarnedCredits)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1761,10 +1502,10 @@ public func FfiConverterTypeGradeSummary_lower(_ value: GradeSummary) -> RustBuf
 /**
  * 졸업 요건
  */
-public struct GraduationRequirement {
+public struct GraduationRequirement: Equatable, Hashable {
     public let name: String
     public let requirement: UInt32?
-    public let calcuation: Float?
+    public let calculation: Float?
     public let difference: Float?
     public let result: Bool
     public let category: String
@@ -1772,60 +1513,22 @@ public struct GraduationRequirement {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(name: String, requirement: UInt32?, calcuation: Float?, difference: Float?, result: Bool, category: String, lectures: [String]) {
+    public init(name: String, requirement: UInt32?, calculation: Float?, difference: Float?, result: Bool, category: String, lectures: [String]) {
         self.name = name
         self.requirement = requirement
-        self.calcuation = calcuation
+        self.calculation = calculation
         self.difference = difference
         self.result = result
         self.category = category
         self.lectures = lectures
     }
+
+    
 }
 
 #if compiler(>=6)
 extension GraduationRequirement: Sendable {}
 #endif
-
-
-extension GraduationRequirement: Equatable, Hashable {
-    public static func ==(lhs: GraduationRequirement, rhs: GraduationRequirement) -> Bool {
-        if lhs.name != rhs.name {
-            return false
-        }
-        if lhs.requirement != rhs.requirement {
-            return false
-        }
-        if lhs.calcuation != rhs.calcuation {
-            return false
-        }
-        if lhs.difference != rhs.difference {
-            return false
-        }
-        if lhs.result != rhs.result {
-            return false
-        }
-        if lhs.category != rhs.category {
-            return false
-        }
-        if lhs.lectures != rhs.lectures {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(name)
-        hasher.combine(requirement)
-        hasher.combine(calcuation)
-        hasher.combine(difference)
-        hasher.combine(result)
-        hasher.combine(category)
-        hasher.combine(lectures)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1836,7 +1539,7 @@ public struct FfiConverterTypeGraduationRequirement: FfiConverterRustBuffer {
             try GraduationRequirement(
                 name: FfiConverterString.read(from: &buf), 
                 requirement: FfiConverterOptionUInt32.read(from: &buf), 
-                calcuation: FfiConverterOptionFloat.read(from: &buf), 
+                calculation: FfiConverterOptionFloat.read(from: &buf), 
                 difference: FfiConverterOptionFloat.read(from: &buf), 
                 result: FfiConverterBool.read(from: &buf), 
                 category: FfiConverterString.read(from: &buf), 
@@ -1847,7 +1550,7 @@ public struct FfiConverterTypeGraduationRequirement: FfiConverterRustBuffer {
     public static func write(_ value: GraduationRequirement, into buf: inout [UInt8]) {
         FfiConverterString.write(value.name, into: &buf)
         FfiConverterOptionUInt32.write(value.requirement, into: &buf)
-        FfiConverterOptionFloat.write(value.calcuation, into: &buf)
+        FfiConverterOptionFloat.write(value.calculation, into: &buf)
         FfiConverterOptionFloat.write(value.difference, into: &buf)
         FfiConverterBool.write(value.result, into: &buf)
         FfiConverterString.write(value.category, into: &buf)
@@ -1874,7 +1577,7 @@ public func FfiConverterTypeGraduationRequirement_lower(_ value: GraduationRequi
 /**
  * 전체 졸업 요건 정보
  */
-public struct GraduationRequirements {
+public struct GraduationRequirements: Equatable, Hashable {
     public let isGraduatable: Bool
     public let requirements: [String: GraduationRequirement]
 
@@ -1884,31 +1587,13 @@ public struct GraduationRequirements {
         self.isGraduatable = isGraduatable
         self.requirements = requirements
     }
+
+    
 }
 
 #if compiler(>=6)
 extension GraduationRequirements: Sendable {}
 #endif
-
-
-extension GraduationRequirements: Equatable, Hashable {
-    public static func ==(lhs: GraduationRequirements, rhs: GraduationRequirements) -> Bool {
-        if lhs.isGraduatable != rhs.isGraduatable {
-            return false
-        }
-        if lhs.requirements != rhs.requirements {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(isGraduatable)
-        hasher.combine(requirements)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -1947,7 +1632,7 @@ public func FfiConverterTypeGraduationRequirements_lower(_ value: GraduationRequ
 /**
  * 졸업 학생 정보
  */
-public struct GraduationStudent {
+public struct GraduationStudent: Equatable, Hashable {
     public let number: UInt32
     public let name: String
     public let grade: UInt32
@@ -1977,71 +1662,13 @@ public struct GraduationStudent {
         self.graduationPoints = graduationPoints
         self.completedPoints = completedPoints
     }
+
+    
 }
 
 #if compiler(>=6)
 extension GraduationStudent: Sendable {}
 #endif
-
-
-extension GraduationStudent: Equatable, Hashable {
-    public static func ==(lhs: GraduationStudent, rhs: GraduationStudent) -> Bool {
-        if lhs.number != rhs.number {
-            return false
-        }
-        if lhs.name != rhs.name {
-            return false
-        }
-        if lhs.grade != rhs.grade {
-            return false
-        }
-        if lhs.semester != rhs.semester {
-            return false
-        }
-        if lhs.status != rhs.status {
-            return false
-        }
-        if lhs.applyYear != rhs.applyYear {
-            return false
-        }
-        if lhs.applyType != rhs.applyType {
-            return false
-        }
-        if lhs.department != rhs.department {
-            return false
-        }
-        if lhs.majors != rhs.majors {
-            return false
-        }
-        if lhs.auditDate != rhs.auditDate {
-            return false
-        }
-        if lhs.graduationPoints != rhs.graduationPoints {
-            return false
-        }
-        if lhs.completedPoints != rhs.completedPoints {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(number)
-        hasher.combine(name)
-        hasher.combine(grade)
-        hasher.combine(semester)
-        hasher.combine(status)
-        hasher.combine(applyYear)
-        hasher.combine(applyType)
-        hasher.combine(department)
-        hasher.combine(majors)
-        hasher.combine(auditDate)
-        hasher.combine(graduationPoints)
-        hasher.combine(completedPoints)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -2100,7 +1727,7 @@ public func FfiConverterTypeGraduationStudent_lower(_ value: GraduationStudent) 
 /**
  * 과목 정보
  */
-public struct Lecture {
+public struct Lecture: Equatable, Hashable {
     /**
      * 계획
      */
@@ -2226,83 +1853,13 @@ public struct Lecture {
         self.scheduleRoom = scheduleRoom
         self.target = target
     }
+
+    
 }
 
 #if compiler(>=6)
 extension Lecture: Sendable {}
 #endif
-
-
-extension Lecture: Equatable, Hashable {
-    public static func ==(lhs: Lecture, rhs: Lecture) -> Bool {
-        if lhs.syllabus != rhs.syllabus {
-            return false
-        }
-        if lhs.category != rhs.category {
-            return false
-        }
-        if lhs.subCategory != rhs.subCategory {
-            return false
-        }
-        if lhs.abeekInfo != rhs.abeekInfo {
-            return false
-        }
-        if lhs.field != rhs.field {
-            return false
-        }
-        if lhs.code != rhs.code {
-            return false
-        }
-        if lhs.name != rhs.name {
-            return false
-        }
-        if lhs.division != rhs.division {
-            return false
-        }
-        if lhs.professor != rhs.professor {
-            return false
-        }
-        if lhs.department != rhs.department {
-            return false
-        }
-        if lhs.timePoints != rhs.timePoints {
-            return false
-        }
-        if lhs.personeel != rhs.personeel {
-            return false
-        }
-        if lhs.remainingSeats != rhs.remainingSeats {
-            return false
-        }
-        if lhs.scheduleRoom != rhs.scheduleRoom {
-            return false
-        }
-        if lhs.target != rhs.target {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(syllabus)
-        hasher.combine(category)
-        hasher.combine(subCategory)
-        hasher.combine(abeekInfo)
-        hasher.combine(field)
-        hasher.combine(code)
-        hasher.combine(name)
-        hasher.combine(division)
-        hasher.combine(professor)
-        hasher.combine(department)
-        hasher.combine(timePoints)
-        hasher.combine(personeel)
-        hasher.combine(remainingSeats)
-        hasher.combine(scheduleRoom)
-        hasher.combine(target)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -2367,7 +1924,7 @@ public func FfiConverterTypeLecture_lower(_ value: Lecture) -> RustBuffer {
 /**
  * 강의평가 결과
  */
-public struct LectureAssessmentResult {
+public struct LectureAssessmentResult: Equatable, Hashable {
     public let year: String
     public let semester: SemesterType
     public let lectureCode: UInt32
@@ -2393,63 +1950,13 @@ public struct LectureAssessmentResult {
         self.position = position
         self.score = score
     }
+
+    
 }
 
 #if compiler(>=6)
 extension LectureAssessmentResult: Sendable {}
 #endif
-
-
-extension LectureAssessmentResult: Equatable, Hashable {
-    public static func ==(lhs: LectureAssessmentResult, rhs: LectureAssessmentResult) -> Bool {
-        if lhs.year != rhs.year {
-            return false
-        }
-        if lhs.semester != rhs.semester {
-            return false
-        }
-        if lhs.lectureCode != rhs.lectureCode {
-            return false
-        }
-        if lhs.lectureName != rhs.lectureName {
-            return false
-        }
-        if lhs.points != rhs.points {
-            return false
-        }
-        if lhs.professor != rhs.professor {
-            return false
-        }
-        if lhs.collage != rhs.collage {
-            return false
-        }
-        if lhs.department != rhs.department {
-            return false
-        }
-        if lhs.position != rhs.position {
-            return false
-        }
-        if lhs.score != rhs.score {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(year)
-        hasher.combine(semester)
-        hasher.combine(lectureCode)
-        hasher.combine(lectureName)
-        hasher.combine(points)
-        hasher.combine(professor)
-        hasher.combine(collage)
-        hasher.combine(department)
-        hasher.combine(position)
-        hasher.combine(score)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -2504,7 +2011,7 @@ public func FfiConverterTypeLectureAssessmentResult_lower(_ value: LectureAssess
 /**
  * 개인의 수업 시간표 정보를 조회합니다.
  */
-public struct PersonalCourseSchedule {
+public struct PersonalCourseSchedule: Equatable, Hashable {
     public let schedule: [Weekday: [CourseScheduleInformation]]
 
     // Default memberwise initializers are never public by default, so we
@@ -2512,27 +2019,13 @@ public struct PersonalCourseSchedule {
     public init(schedule: [Weekday: [CourseScheduleInformation]]) {
         self.schedule = schedule
     }
+
+    
 }
 
 #if compiler(>=6)
 extension PersonalCourseSchedule: Sendable {}
 #endif
-
-
-extension PersonalCourseSchedule: Equatable, Hashable {
-    public static func ==(lhs: PersonalCourseSchedule, rhs: PersonalCourseSchedule) -> Bool {
-        if lhs.schedule != rhs.schedule {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(schedule)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -2569,7 +2062,7 @@ public func FfiConverterTypePersonalCourseSchedule_lower(_ value: PersonalCourse
 /**
  * 수혜받은 장학금 정보
  */
-public struct Scholarship {
+public struct Scholarship: Equatable, Hashable {
     public let year: UInt32
     public let semester: SemesterType
     public let name: String
@@ -2603,79 +2096,13 @@ public struct Scholarship {
         self.note = note
         self.workedAt = workedAt
     }
+
+    
 }
 
 #if compiler(>=6)
 extension Scholarship: Sendable {}
 #endif
-
-
-extension Scholarship: Equatable, Hashable {
-    public static func ==(lhs: Scholarship, rhs: Scholarship) -> Bool {
-        if lhs.year != rhs.year {
-            return false
-        }
-        if lhs.semester != rhs.semester {
-            return false
-        }
-        if lhs.name != rhs.name {
-            return false
-        }
-        if lhs.receivedAmount != rhs.receivedAmount {
-            return false
-        }
-        if lhs.receiveType != rhs.receiveType {
-            return false
-        }
-        if lhs.status != rhs.status {
-            return false
-        }
-        if lhs.processedAt != rhs.processedAt {
-            return false
-        }
-        if lhs.selectedAmount != rhs.selectedAmount {
-            return false
-        }
-        if lhs.refundedAmount != rhs.refundedAmount {
-            return false
-        }
-        if lhs.replacedAmount != rhs.replacedAmount {
-            return false
-        }
-        if lhs.replacedBy != rhs.replacedBy {
-            return false
-        }
-        if lhs.dropReason != rhs.dropReason {
-            return false
-        }
-        if lhs.note != rhs.note {
-            return false
-        }
-        if lhs.workedAt != rhs.workedAt {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(year)
-        hasher.combine(semester)
-        hasher.combine(name)
-        hasher.combine(receivedAmount)
-        hasher.combine(receiveType)
-        hasher.combine(status)
-        hasher.combine(processedAt)
-        hasher.combine(selectedAmount)
-        hasher.combine(refundedAmount)
-        hasher.combine(replacedAmount)
-        hasher.combine(replacedBy)
-        hasher.combine(dropReason)
-        hasher.combine(note)
-        hasher.combine(workedAt)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -2738,7 +2165,7 @@ public func FfiConverterTypeScholarship_lower(_ value: Scholarship) -> RustBuffe
 /**
  * 학기별 성적
  */
-public struct SemesterGrade {
+public struct SemesterGrade: Equatable, Hashable {
     /**
      * 학년도
      */
@@ -2848,75 +2275,13 @@ public struct SemesterGrade {
         self.consult = consult
         self.flunked = flunked
     }
+
+    
 }
 
 #if compiler(>=6)
 extension SemesterGrade: Sendable {}
 #endif
-
-
-extension SemesterGrade: Equatable, Hashable {
-    public static func ==(lhs: SemesterGrade, rhs: SemesterGrade) -> Bool {
-        if lhs.year != rhs.year {
-            return false
-        }
-        if lhs.semester != rhs.semester {
-            return false
-        }
-        if lhs.attemptedCredits != rhs.attemptedCredits {
-            return false
-        }
-        if lhs.earnedCredits != rhs.earnedCredits {
-            return false
-        }
-        if lhs.pfEarnedCredits != rhs.pfEarnedCredits {
-            return false
-        }
-        if lhs.gradePointsAverage != rhs.gradePointsAverage {
-            return false
-        }
-        if lhs.gradePointsSum != rhs.gradePointsSum {
-            return false
-        }
-        if lhs.arithmeticMean != rhs.arithmeticMean {
-            return false
-        }
-        if lhs.semesterRank != rhs.semesterRank {
-            return false
-        }
-        if lhs.generalRank != rhs.generalRank {
-            return false
-        }
-        if lhs.academicProbation != rhs.academicProbation {
-            return false
-        }
-        if lhs.consult != rhs.consult {
-            return false
-        }
-        if lhs.flunked != rhs.flunked {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(year)
-        hasher.combine(semester)
-        hasher.combine(attemptedCredits)
-        hasher.combine(earnedCredits)
-        hasher.combine(pfEarnedCredits)
-        hasher.combine(gradePointsAverage)
-        hasher.combine(gradePointsSum)
-        hasher.combine(arithmeticMean)
-        hasher.combine(semesterRank)
-        hasher.combine(generalRank)
-        hasher.combine(academicProbation)
-        hasher.combine(consult)
-        hasher.combine(flunked)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -2977,7 +2342,7 @@ public func FfiConverterTypeSemesterGrade_lower(_ value: SemesterGrade) -> RustB
 /**
  * 학생의 학적상태 기록
  */
-public struct StudentAcademicRecord {
+public struct StudentAcademicRecord: Equatable, Hashable {
     public let startDate: String
     public let endDate: String
     public let year: String
@@ -2997,51 +2362,13 @@ public struct StudentAcademicRecord {
         self.reason = reason
         self.processDate = processDate
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentAcademicRecord: Sendable {}
 #endif
-
-
-extension StudentAcademicRecord: Equatable, Hashable {
-    public static func ==(lhs: StudentAcademicRecord, rhs: StudentAcademicRecord) -> Bool {
-        if lhs.startDate != rhs.startDate {
-            return false
-        }
-        if lhs.endDate != rhs.endDate {
-            return false
-        }
-        if lhs.year != rhs.year {
-            return false
-        }
-        if lhs.term != rhs.term {
-            return false
-        }
-        if lhs.category != rhs.category {
-            return false
-        }
-        if lhs.reason != rhs.reason {
-            return false
-        }
-        if lhs.processDate != rhs.processDate {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(startDate)
-        hasher.combine(endDate)
-        hasher.combine(year)
-        hasher.combine(term)
-        hasher.combine(category)
-        hasher.combine(reason)
-        hasher.combine(processDate)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -3090,7 +2417,7 @@ public func FfiConverterTypeStudentAcademicRecord_lower(_ value: StudentAcademic
 /**
  * 학생의 학적상태 정보
  */
-public struct StudentAcademicRecords {
+public struct StudentAcademicRecords: Equatable, Hashable {
     public let records: [StudentAcademicRecord]
 
     // Default memberwise initializers are never public by default, so we
@@ -3098,27 +2425,13 @@ public struct StudentAcademicRecords {
     public init(records: [StudentAcademicRecord]) {
         self.records = records
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentAcademicRecords: Sendable {}
 #endif
-
-
-extension StudentAcademicRecords: Equatable, Hashable {
-    public static func ==(lhs: StudentAcademicRecords, rhs: StudentAcademicRecords) -> Bool {
-        if lhs.records != rhs.records {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(records)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -3155,7 +2468,7 @@ public func FfiConverterTypeStudentAcademicRecords_lower(_ value: StudentAcademi
 /**
  * 학생의 은행 계좌 정보
  */
-public struct StudentBankAccount {
+public struct StudentBankAccount: Equatable, Hashable {
     public let bank: String?
     public let accountNumber: String?
     public let holder: String?
@@ -3167,35 +2480,13 @@ public struct StudentBankAccount {
         self.accountNumber = accountNumber
         self.holder = holder
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentBankAccount: Sendable {}
 #endif
-
-
-extension StudentBankAccount: Equatable, Hashable {
-    public static func ==(lhs: StudentBankAccount, rhs: StudentBankAccount) -> Bool {
-        if lhs.bank != rhs.bank {
-            return false
-        }
-        if lhs.accountNumber != rhs.accountNumber {
-            return false
-        }
-        if lhs.holder != rhs.holder {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(bank)
-        hasher.combine(accountNumber)
-        hasher.combine(holder)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -3236,7 +2527,7 @@ public func FfiConverterTypeStudentBankAccount_lower(_ value: StudentBankAccount
 /**
  * 학생의 가족관계 정보
  */
-public struct StudentFamily {
+public struct StudentFamily: Equatable, Hashable {
     public let members: [StudentFamilyMember]
 
     // Default memberwise initializers are never public by default, so we
@@ -3244,27 +2535,13 @@ public struct StudentFamily {
     public init(members: [StudentFamilyMember]) {
         self.members = members
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentFamily: Sendable {}
 #endif
-
-
-extension StudentFamily: Equatable, Hashable {
-    public static func ==(lhs: StudentFamily, rhs: StudentFamily) -> Bool {
-        if lhs.members != rhs.members {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(members)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -3301,7 +2578,7 @@ public func FfiConverterTypeStudentFamily_lower(_ value: StudentFamily) -> RustB
 /**
  * 학생의 가족 구성원
  */
-public struct StudentFamilyMember {
+public struct StudentFamilyMember: Equatable, Hashable {
     public let relationType: String?
     public let telNumber: String?
     public let name: String?
@@ -3325,59 +2602,13 @@ public struct StudentFamilyMember {
         self.isGuardian = isGuardian
         self.isCohabit = isCohabit
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentFamilyMember: Sendable {}
 #endif
-
-
-extension StudentFamilyMember: Equatable, Hashable {
-    public static func ==(lhs: StudentFamilyMember, rhs: StudentFamilyMember) -> Bool {
-        if lhs.relationType != rhs.relationType {
-            return false
-        }
-        if lhs.telNumber != rhs.telNumber {
-            return false
-        }
-        if lhs.name != rhs.name {
-            return false
-        }
-        if lhs.mobileNumber != rhs.mobileNumber {
-            return false
-        }
-        if lhs.office != rhs.office {
-            return false
-        }
-        if lhs.job != rhs.job {
-            return false
-        }
-        if lhs.position != rhs.position {
-            return false
-        }
-        if lhs.isGuardian != rhs.isGuardian {
-            return false
-        }
-        if lhs.isCohabit != rhs.isCohabit {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(relationType)
-        hasher.combine(telNumber)
-        hasher.combine(name)
-        hasher.combine(mobileNumber)
-        hasher.combine(office)
-        hasher.combine(job)
-        hasher.combine(position)
-        hasher.combine(isGuardian)
-        hasher.combine(isCohabit)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -3430,7 +2661,7 @@ public func FfiConverterTypeStudentFamilyMember_lower(_ value: StudentFamilyMemb
 /**
  * 7+1 프로그램 정보를 반환합니다.
  */
-public struct StudentForignStudyInformation {
+public struct StudentForignStudyInformation: Equatable, Hashable {
     public let approvalDate: String?
     public let authenticationNumber: String?
     public let issueDate: String?
@@ -3442,35 +2673,13 @@ public struct StudentForignStudyInformation {
         self.authenticationNumber = authenticationNumber
         self.issueDate = issueDate
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentForignStudyInformation: Sendable {}
 #endif
-
-
-extension StudentForignStudyInformation: Equatable, Hashable {
-    public static func ==(lhs: StudentForignStudyInformation, rhs: StudentForignStudyInformation) -> Bool {
-        if lhs.approvalDate != rhs.approvalDate {
-            return false
-        }
-        if lhs.authenticationNumber != rhs.authenticationNumber {
-            return false
-        }
-        if lhs.issueDate != rhs.issueDate {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(approvalDate)
-        hasher.combine(authenticationNumber)
-        hasher.combine(issueDate)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -3511,7 +2720,7 @@ public func FfiConverterTypeStudentForignStudyInformation_lower(_ value: Student
 /**
  * 학생의 졸업 정보를 반환합니다. 졸업하지 않았다면 반환되지 않습니다.
  */
-public struct StudentGraduation {
+public struct StudentGraduation: Equatable, Hashable {
     public let graduationCardinal: UInt32
     public let graduationCertificationNumber: UInt32
     public let graduationYear: UInt32
@@ -3537,63 +2746,13 @@ public struct StudentGraduation {
         self.graduationRank = graduationRank
         self.graduationPersonnelNumber = graduationPersonnelNumber
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentGraduation: Sendable {}
 #endif
-
-
-extension StudentGraduation: Equatable, Hashable {
-    public static func ==(lhs: StudentGraduation, rhs: StudentGraduation) -> Bool {
-        if lhs.graduationCardinal != rhs.graduationCardinal {
-            return false
-        }
-        if lhs.graduationCertificationNumber != rhs.graduationCertificationNumber {
-            return false
-        }
-        if lhs.graduationYear != rhs.graduationYear {
-            return false
-        }
-        if lhs.graduationTerms != rhs.graduationTerms {
-            return false
-        }
-        if lhs.graduationDate != rhs.graduationDate {
-            return false
-        }
-        if lhs.academicDegreeNumber != rhs.academicDegreeNumber {
-            return false
-        }
-        if lhs.academicDegreeName != rhs.academicDegreeName {
-            return false
-        }
-        if lhs.earlyGraduation != rhs.earlyGraduation {
-            return false
-        }
-        if lhs.graduationRank != rhs.graduationRank {
-            return false
-        }
-        if lhs.graduationPersonnelNumber != rhs.graduationPersonnelNumber {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(graduationCardinal)
-        hasher.combine(graduationCertificationNumber)
-        hasher.combine(graduationYear)
-        hasher.combine(graduationTerms)
-        hasher.combine(graduationDate)
-        hasher.combine(academicDegreeNumber)
-        hasher.combine(academicDegreeName)
-        hasher.combine(earlyGraduation)
-        hasher.combine(graduationRank)
-        hasher.combine(graduationPersonnelNumber)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -3648,7 +2807,7 @@ public func FfiConverterTypeStudentGraduation_lower(_ value: StudentGraduation) 
 /**
  * 기본 학생 정보
  */
-public struct StudentInformation {
+public struct StudentInformation: Equatable, Hashable {
     public let applyYear: UInt32
     public let studentNumber: UInt32
     public let name: String
@@ -3708,131 +2867,13 @@ public struct StudentInformation {
         self.connectedMajor = connectedMajor
         self.abeek = abeek
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentInformation: Sendable {}
 #endif
-
-
-extension StudentInformation: Equatable, Hashable {
-    public static func ==(lhs: StudentInformation, rhs: StudentInformation) -> Bool {
-        if lhs.applyYear != rhs.applyYear {
-            return false
-        }
-        if lhs.studentNumber != rhs.studentNumber {
-            return false
-        }
-        if lhs.name != rhs.name {
-            return false
-        }
-        if lhs.rrn != rhs.rrn {
-            return false
-        }
-        if lhs.collage != rhs.collage {
-            return false
-        }
-        if lhs.department != rhs.department {
-            return false
-        }
-        if lhs.major != rhs.major {
-            return false
-        }
-        if lhs.division != rhs.division {
-            return false
-        }
-        if lhs.grade != rhs.grade {
-            return false
-        }
-        if lhs.term != rhs.term {
-            return false
-        }
-        if lhs.image != rhs.image {
-            return false
-        }
-        if lhs.alias != rhs.alias {
-            return false
-        }
-        if lhs.kanjiName != rhs.kanjiName {
-            return false
-        }
-        if lhs.email != rhs.email {
-            return false
-        }
-        if lhs.telNumber != rhs.telNumber {
-            return false
-        }
-        if lhs.mobileNumber != rhs.mobileNumber {
-            return false
-        }
-        if lhs.postCode != rhs.postCode {
-            return false
-        }
-        if lhs.address != rhs.address {
-            return false
-        }
-        if lhs.specificAddress != rhs.specificAddress {
-            return false
-        }
-        if lhs.isTransferStudent != rhs.isTransferStudent {
-            return false
-        }
-        if lhs.applyDate != rhs.applyDate {
-            return false
-        }
-        if lhs.appliedCollage != rhs.appliedCollage {
-            return false
-        }
-        if lhs.appliedDepartment != rhs.appliedDepartment {
-            return false
-        }
-        if lhs.pluralMajor != rhs.pluralMajor {
-            return false
-        }
-        if lhs.subMajor != rhs.subMajor {
-            return false
-        }
-        if lhs.connectedMajor != rhs.connectedMajor {
-            return false
-        }
-        if lhs.abeek != rhs.abeek {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(applyYear)
-        hasher.combine(studentNumber)
-        hasher.combine(name)
-        hasher.combine(rrn)
-        hasher.combine(collage)
-        hasher.combine(department)
-        hasher.combine(major)
-        hasher.combine(division)
-        hasher.combine(grade)
-        hasher.combine(term)
-        hasher.combine(image)
-        hasher.combine(alias)
-        hasher.combine(kanjiName)
-        hasher.combine(email)
-        hasher.combine(telNumber)
-        hasher.combine(mobileNumber)
-        hasher.combine(postCode)
-        hasher.combine(address)
-        hasher.combine(specificAddress)
-        hasher.combine(isTransferStudent)
-        hasher.combine(applyDate)
-        hasher.combine(appliedCollage)
-        hasher.combine(appliedDepartment)
-        hasher.combine(pluralMajor)
-        hasher.combine(subMajor)
-        hasher.combine(connectedMajor)
-        hasher.combine(abeek)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -3921,7 +2962,7 @@ public func FfiConverterTypeStudentInformation_lower(_ value: StudentInformation
 /**
  * 평생교육사 정보
  */
-public struct StudentLifelongInformation {
+public struct StudentLifelongInformation: Equatable, Hashable {
     public let applyDate: String?
     public let lifelongType: String?
     public let qualificationNumber: String?
@@ -3935,39 +2976,13 @@ public struct StudentLifelongInformation {
         self.qualificationNumber = qualificationNumber
         self.qualificationDate = qualificationDate
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentLifelongInformation: Sendable {}
 #endif
-
-
-extension StudentLifelongInformation: Equatable, Hashable {
-    public static func ==(lhs: StudentLifelongInformation, rhs: StudentLifelongInformation) -> Bool {
-        if lhs.applyDate != rhs.applyDate {
-            return false
-        }
-        if lhs.lifelongType != rhs.lifelongType {
-            return false
-        }
-        if lhs.qualificationNumber != rhs.qualificationNumber {
-            return false
-        }
-        if lhs.qualificationDate != rhs.qualificationDate {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(applyDate)
-        hasher.combine(lifelongType)
-        hasher.combine(qualificationNumber)
-        hasher.combine(qualificationDate)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4010,7 +3025,7 @@ public func FfiConverterTypeStudentLifelongInformation_lower(_ value: StudentLif
 /**
  * 학생의 자격(교직이수, 평생교육사, 7+1 프로그램) 정보
  */
-public struct StudentQualification {
+public struct StudentQualification: Equatable, Hashable {
     public let teachingMajor: StudentTeachingMajorInformation?
     public let teachingPluralMajor: StudentTeachingPluralMajorInformation?
     public let lifelong: StudentLifelongInformation?
@@ -4024,39 +3039,13 @@ public struct StudentQualification {
         self.lifelong = lifelong
         self.forignStudy = forignStudy
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentQualification: Sendable {}
 #endif
-
-
-extension StudentQualification: Equatable, Hashable {
-    public static func ==(lhs: StudentQualification, rhs: StudentQualification) -> Bool {
-        if lhs.teachingMajor != rhs.teachingMajor {
-            return false
-        }
-        if lhs.teachingPluralMajor != rhs.teachingPluralMajor {
-            return false
-        }
-        if lhs.lifelong != rhs.lifelong {
-            return false
-        }
-        if lhs.forignStudy != rhs.forignStudy {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(teachingMajor)
-        hasher.combine(teachingPluralMajor)
-        hasher.combine(lifelong)
-        hasher.combine(forignStudy)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4099,7 +3088,7 @@ public func FfiConverterTypeStudentQualification_lower(_ value: StudentQualifica
 /**
  * 학생의 종교 정보
  */
-public struct StudentReligion {
+public struct StudentReligion: Equatable, Hashable {
     public let religionType: String?
     public let startDate: String?
     public let church: String?
@@ -4133,79 +3122,13 @@ public struct StudentReligion {
         self.baptismMan = baptismMan
         self.churchGrp = churchGrp
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentReligion: Sendable {}
 #endif
-
-
-extension StudentReligion: Equatable, Hashable {
-    public static func ==(lhs: StudentReligion, rhs: StudentReligion) -> Bool {
-        if lhs.religionType != rhs.religionType {
-            return false
-        }
-        if lhs.startDate != rhs.startDate {
-            return false
-        }
-        if lhs.church != rhs.church {
-            return false
-        }
-        if lhs.churchMan != rhs.churchMan {
-            return false
-        }
-        if lhs.baptismLevel != rhs.baptismLevel {
-            return false
-        }
-        if lhs.baptismGrp != rhs.baptismGrp {
-            return false
-        }
-        if lhs.serviceDepartment != rhs.serviceDepartment {
-            return false
-        }
-        if lhs.serviceDepartmentTitle != rhs.serviceDepartmentTitle {
-            return false
-        }
-        if lhs.churchAddress != rhs.churchAddress {
-            return false
-        }
-        if lhs.singeub != rhs.singeub {
-            return false
-        }
-        if lhs.baptismDate != rhs.baptismDate {
-            return false
-        }
-        if lhs.baptismChurch != rhs.baptismChurch {
-            return false
-        }
-        if lhs.baptismMan != rhs.baptismMan {
-            return false
-        }
-        if lhs.churchGrp != rhs.churchGrp {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(religionType)
-        hasher.combine(startDate)
-        hasher.combine(church)
-        hasher.combine(churchMan)
-        hasher.combine(baptismLevel)
-        hasher.combine(baptismGrp)
-        hasher.combine(serviceDepartment)
-        hasher.combine(serviceDepartmentTitle)
-        hasher.combine(churchAddress)
-        hasher.combine(singeub)
-        hasher.combine(baptismDate)
-        hasher.combine(baptismChurch)
-        hasher.combine(baptismMan)
-        hasher.combine(churchGrp)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4268,7 +3191,7 @@ public func FfiConverterTypeStudentReligion_lower(_ value: StudentReligion) -> R
 /**
  * 연구비 입금 계좌 정보
  */
-public struct StudentResearchBankAccount {
+public struct StudentResearchBankAccount: Equatable, Hashable {
     public let bank: String?
     public let accountNumber: String?
     public let holder: String?
@@ -4280,35 +3203,13 @@ public struct StudentResearchBankAccount {
         self.accountNumber = accountNumber
         self.holder = holder
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentResearchBankAccount: Sendable {}
 #endif
-
-
-extension StudentResearchBankAccount: Equatable, Hashable {
-    public static func ==(lhs: StudentResearchBankAccount, rhs: StudentResearchBankAccount) -> Bool {
-        if lhs.bank != rhs.bank {
-            return false
-        }
-        if lhs.accountNumber != rhs.accountNumber {
-            return false
-        }
-        if lhs.holder != rhs.holder {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(bank)
-        hasher.combine(accountNumber)
-        hasher.combine(holder)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4349,7 +3250,7 @@ public func FfiConverterTypeStudentResearchBankAccount_lower(_ value: StudentRes
 /**
  * 교직이수(주전공) 정보
  */
-public struct StudentTeachingMajorInformation {
+public struct StudentTeachingMajorInformation: Equatable, Hashable {
     public let majorName: String?
     public let qualificationNumber: String?
     public let initiationDate: String?
@@ -4363,39 +3264,13 @@ public struct StudentTeachingMajorInformation {
         self.initiationDate = initiationDate
         self.qualificationDate = qualificationDate
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentTeachingMajorInformation: Sendable {}
 #endif
-
-
-extension StudentTeachingMajorInformation: Equatable, Hashable {
-    public static func ==(lhs: StudentTeachingMajorInformation, rhs: StudentTeachingMajorInformation) -> Bool {
-        if lhs.majorName != rhs.majorName {
-            return false
-        }
-        if lhs.qualificationNumber != rhs.qualificationNumber {
-            return false
-        }
-        if lhs.initiationDate != rhs.initiationDate {
-            return false
-        }
-        if lhs.qualificationDate != rhs.qualificationDate {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(majorName)
-        hasher.combine(qualificationNumber)
-        hasher.combine(initiationDate)
-        hasher.combine(qualificationDate)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4438,7 +3313,7 @@ public func FfiConverterTypeStudentTeachingMajorInformation_lower(_ value: Stude
 /**
  * 교직이수(복수전공) 정보
  */
-public struct StudentTeachingPluralMajorInformation {
+public struct StudentTeachingPluralMajorInformation: Equatable, Hashable {
     public let majorName: String?
     public let qualificationNumber: String?
     public let qualificationDate: String?
@@ -4450,35 +3325,13 @@ public struct StudentTeachingPluralMajorInformation {
         self.qualificationNumber = qualificationNumber
         self.qualificationDate = qualificationDate
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentTeachingPluralMajorInformation: Sendable {}
 #endif
-
-
-extension StudentTeachingPluralMajorInformation: Equatable, Hashable {
-    public static func ==(lhs: StudentTeachingPluralMajorInformation, rhs: StudentTeachingPluralMajorInformation) -> Bool {
-        if lhs.majorName != rhs.majorName {
-            return false
-        }
-        if lhs.qualificationNumber != rhs.qualificationNumber {
-            return false
-        }
-        if lhs.qualificationDate != rhs.qualificationDate {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(majorName)
-        hasher.combine(qualificationNumber)
-        hasher.combine(qualificationDate)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4519,7 +3372,7 @@ public func FfiConverterTypeStudentTeachingPluralMajorInformation_lower(_ value:
 /**
  * 편입정보 내 기록
  */
-public struct StudentTransferRecord {
+public struct StudentTransferRecord: Equatable, Hashable {
     public let isTransfer: String
     public let admissionDate: String
     public let admissionGrade: String
@@ -4537,47 +3390,13 @@ public struct StudentTransferRecord {
         self.acceptedCredit = acceptedCredit
         self.acceptedTerms = acceptedTerms
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentTransferRecord: Sendable {}
 #endif
-
-
-extension StudentTransferRecord: Equatable, Hashable {
-    public static func ==(lhs: StudentTransferRecord, rhs: StudentTransferRecord) -> Bool {
-        if lhs.isTransfer != rhs.isTransfer {
-            return false
-        }
-        if lhs.admissionDate != rhs.admissionDate {
-            return false
-        }
-        if lhs.admissionGrade != rhs.admissionGrade {
-            return false
-        }
-        if lhs.admissionTerm != rhs.admissionTerm {
-            return false
-        }
-        if lhs.acceptedCredit != rhs.acceptedCredit {
-            return false
-        }
-        if lhs.acceptedTerms != rhs.acceptedTerms {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(isTransfer)
-        hasher.combine(admissionDate)
-        hasher.combine(admissionGrade)
-        hasher.combine(admissionTerm)
-        hasher.combine(acceptedCredit)
-        hasher.combine(acceptedTerms)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4624,7 +3443,7 @@ public func FfiConverterTypeStudentTransferRecord_lower(_ value: StudentTransfer
 /**
  * 학생 편입 정보
  */
-public struct StudentTransferRecords {
+public struct StudentTransferRecords: Equatable, Hashable {
     public let records: [StudentTransferRecord]
 
     // Default memberwise initializers are never public by default, so we
@@ -4632,27 +3451,13 @@ public struct StudentTransferRecords {
     public init(records: [StudentTransferRecord]) {
         self.records = records
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentTransferRecords: Sendable {}
 #endif
-
-
-extension StudentTransferRecords: Equatable, Hashable {
-    public static func ==(lhs: StudentTransferRecords, rhs: StudentTransferRecords) -> Bool {
-        if lhs.records != rhs.records {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(records)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4689,7 +3494,7 @@ public func FfiConverterTypeStudentTransferRecords_lower(_ value: StudentTransfe
 /**
  * 학생의 직업 정보
  */
-public struct StudentWorkInformation {
+public struct StudentWorkInformation: Equatable, Hashable {
     public let job: String?
     public let publicOfficial: String?
     public let companyName: String?
@@ -4715,63 +3520,13 @@ public struct StudentWorkInformation {
         self.telNumber = telNumber
         self.faxNumber = faxNumber
     }
+
+    
 }
 
 #if compiler(>=6)
 extension StudentWorkInformation: Sendable {}
 #endif
-
-
-extension StudentWorkInformation: Equatable, Hashable {
-    public static func ==(lhs: StudentWorkInformation, rhs: StudentWorkInformation) -> Bool {
-        if lhs.job != rhs.job {
-            return false
-        }
-        if lhs.publicOfficial != rhs.publicOfficial {
-            return false
-        }
-        if lhs.companyName != rhs.companyName {
-            return false
-        }
-        if lhs.departmentName != rhs.departmentName {
-            return false
-        }
-        if lhs.title != rhs.title {
-            return false
-        }
-        if lhs.zipCode != rhs.zipCode {
-            return false
-        }
-        if lhs.address != rhs.address {
-            return false
-        }
-        if lhs.specificAddress != rhs.specificAddress {
-            return false
-        }
-        if lhs.telNumber != rhs.telNumber {
-            return false
-        }
-        if lhs.faxNumber != rhs.faxNumber {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(job)
-        hasher.combine(publicOfficial)
-        hasher.combine(companyName)
-        hasher.combine(departmentName)
-        hasher.combine(title)
-        hasher.combine(zipCode)
-        hasher.combine(address)
-        hasher.combine(specificAddress)
-        hasher.combine(telNumber)
-        hasher.combine(faxNumber)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4826,7 +3581,7 @@ public func FfiConverterTypeStudentWorkInformation_lower(_ value: StudentWorkInf
 /**
  * uniffi 지원을 위한 u32 Pair입니다.
  */
-public struct UnsignedIntPair {
+public struct UnsignedIntPair: Equatable, Hashable {
     public let first: UInt32
     public let second: UInt32
 
@@ -4836,31 +3591,13 @@ public struct UnsignedIntPair {
         self.first = first
         self.second = second
     }
+
+    
 }
 
 #if compiler(>=6)
 extension UnsignedIntPair: Sendable {}
 #endif
-
-
-extension UnsignedIntPair: Equatable, Hashable {
-    public static func ==(lhs: UnsignedIntPair, rhs: UnsignedIntPair) -> Bool {
-        if lhs.first != rhs.first {
-            return false
-        }
-        if lhs.second != rhs.second {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(first)
-        hasher.combine(second)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4901,7 +3638,7 @@ public func FfiConverterTypeUnsignedIntPair_lower(_ value: UnsignedIntPair) -> R
  * 과목 점수
  */
 
-public enum ClassScore {
+public enum ClassScore: Equatable, Hashable {
     
     /**
      * P/F 과목의 Pass
@@ -4920,8 +3657,10 @@ public enum ClassScore {
      * 성적 없음
      */
     case empty
-}
 
+
+
+}
 
 #if compiler(>=6)
 extension ClassScore: Sendable {}
@@ -4990,20 +3729,13 @@ public func FfiConverterTypeClassScore_lower(_ value: ClassScore) -> RustBuffer 
 }
 
 
-extension ClassScore: Equatable, Hashable {}
-
-
-
-
-
-
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
  * 학위과정
  */
 
-public enum CourseType {
+public enum CourseType: Equatable, Hashable {
     
     /**
      * 박사과정
@@ -5025,8 +3757,10 @@ public enum CourseType {
      * 학사과정
      */
     case bachelor
-}
 
+
+
+}
 
 #if compiler(>=6)
 extension CourseType: Sendable {}
@@ -5099,20 +3833,13 @@ public func FfiConverterTypeCourseType_lower(_ value: CourseType) -> RustBuffer 
 }
 
 
-extension CourseType: Equatable, Hashable {}
-
-
-
-
-
-
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
  * 강의를 찾을 때 사용하는 강의 카테고리
  */
 
-public enum LectureCategory {
+public enum LectureCategory: Equatable, Hashable {
     
     /**
      * 전공 강의
@@ -5217,8 +3944,10 @@ public enum LectureCategory {
      * 숭실사이버대
      */
     case cyber
-}
 
+
+
+}
 
 #if compiler(>=6)
 extension LectureCategory: Sendable {}
@@ -5358,13 +4087,6 @@ public func FfiConverterTypeLectureCategory_lower(_ value: LectureCategory) -> R
 }
 
 
-extension LectureCategory: Equatable, Hashable {}
-
-
-
-
-
-
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
@@ -5373,7 +4095,7 @@ extension LectureCategory: Equatable, Hashable {}
  * 각 애플리케이션에서의 변환은 애플리케이션 내에서 직접 처리하여야 합니다.
  */
 
-public enum SemesterType {
+public enum SemesterType: Equatable, Hashable {
     
     /**
      * 1학기
@@ -5391,8 +4113,10 @@ public enum SemesterType {
      * 겨울학기
      */
     case winter
-}
 
+
+
+}
 
 #if compiler(>=6)
 extension SemesterType: Sendable {}
@@ -5459,20 +4183,13 @@ public func FfiConverterTypeSemesterType_lower(_ value: SemesterType) -> RustBuf
 }
 
 
-extension SemesterType: Equatable, Hashable {}
-
-
-
-
-
-
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
  * 한 주의 요일을 표현합니다.
  */
 
-public enum Weekday {
+public enum Weekday: Equatable, Hashable {
     
     /**
      * 월요일
@@ -5502,8 +4219,10 @@ public enum Weekday {
      * 일요일
      */
     case sun
-}
 
+
+
+}
 
 #if compiler(>=6)
 extension Weekday: Sendable {}
@@ -5586,13 +4305,6 @@ public func FfiConverterTypeWeekday_lift(_ buf: RustBuffer) throws -> Weekday {
 public func FfiConverterTypeWeekday_lower(_ value: Weekday) -> RustBuffer {
     return FfiConverterTypeWeekday.lower(value)
 }
-
-
-extension Weekday: Equatable, Hashable {}
-
-
-
-
 
 
 #if swift(>=5.8)
@@ -6093,7 +4805,7 @@ private enum InitializationResult {
 // the code inside is only computed once.
 private let initializationResult: InitializationResult = {
     // Get the bindings contract version from our ComponentInterface
-    let bindings_contract_version = 29
+    let bindings_contract_version = 30
     // Get the scaffolding contract version by calling the into the dylib
     let scaffolding_contract_version = ffi_rusaint_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {

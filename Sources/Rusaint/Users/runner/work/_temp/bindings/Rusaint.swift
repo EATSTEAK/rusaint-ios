@@ -352,19 +352,29 @@ private func uniffiTraitInterfaceCallWithError<T, E>(
         callStatus.pointee.errorBuf = FfiConverterString.lower(String(describing: error))
     }
 }
+// Initial value and increment amount for handles. 
+// These ensure that SWIFT handles always have the lowest bit set
+fileprivate let UNIFFI_HANDLEMAP_INITIAL: UInt64 = 1
+fileprivate let UNIFFI_HANDLEMAP_DELTA: UInt64 = 2
+
 fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
     // All mutation happens with this lock held, which is why we implement @unchecked Sendable.
     private let lock = NSLock()
     private var map: [UInt64: T] = [:]
-    private var currentHandle: UInt64 = 1
+    private var currentHandle: UInt64 = UNIFFI_HANDLEMAP_INITIAL
 
     func insert(obj: T) -> UInt64 {
         lock.withLock {
-            let handle = currentHandle
-            currentHandle += 1
-            map[handle] = obj
-            return handle
+            return doInsert(obj)
         }
+    }
+
+    // Low-level insert function, this assumes `lock` is held.
+    private func doInsert(_ obj: T) -> UInt64 {
+        let handle = currentHandle
+        currentHandle += UNIFFI_HANDLEMAP_DELTA
+        map[handle] = obj
+        return handle
     }
 
      func get(handle: UInt64) throws -> T {
@@ -373,6 +383,15 @@ fileprivate final class UniffiHandleMap<T>: @unchecked Sendable {
                 throw UniffiInternalError.unexpectedStaleHandle
             }
             return obj
+        }
+    }
+
+     func clone(handle: UInt64) throws -> UInt64 {
+        try lock.withLock {
+            guard let obj = map[handle] else {
+                throw UniffiInternalError.unexpectedStaleHandle
+            }
+            return doInsert(obj)
         }
     }
 
@@ -518,13 +537,13 @@ public protocol ChapelApplicationProtocol: AnyObject, Sendable {
  * [채플정보조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW3681)
  */
 open class ChapelApplication: ChapelApplicationProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -534,36 +553,32 @@ open class ChapelApplication: ChapelApplicationProtocol, @unchecked Sendable {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_chapelapplication(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_chapelapplication(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_chapelapplication(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_chapelapplication(handle, $0) }
     }
 
     
@@ -578,7 +593,7 @@ open func getSelectedSemester()async throws  -> YearSemester  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_chapelapplication_get_selected_semester(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -598,7 +613,7 @@ open func information(year: UInt32, semester: SemesterType)async throws  -> Chap
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_chapelapplication_information(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
                 )
             },
@@ -611,6 +626,7 @@ open func information(year: UInt32, semester: SemesterType)async throws  -> Chap
 }
     
 
+    
 }
 
 
@@ -618,33 +634,24 @@ open func information(year: UInt32, semester: SemesterType)async throws  -> Chap
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeChapelApplication: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = ChapelApplication
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> ChapelApplication {
-        return ChapelApplication(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> ChapelApplication {
+        return ChapelApplication(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: ChapelApplication) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: ChapelApplication) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapelApplication {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: ChapelApplication, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -652,14 +659,14 @@ public struct FfiConverterTypeChapelApplication: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeChapelApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> ChapelApplication {
-    return try FfiConverterTypeChapelApplication.lift(pointer)
+public func FfiConverterTypeChapelApplication_lift(_ handle: UInt64) throws -> ChapelApplication {
+    return try FfiConverterTypeChapelApplication.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeChapelApplication_lower(_ value: ChapelApplication) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeChapelApplication_lower(_ value: ChapelApplication) -> UInt64 {
     return FfiConverterTypeChapelApplication.lower(value)
 }
 
@@ -683,13 +690,13 @@ public protocol ChapelApplicationBuilderProtocol: AnyObject, Sendable {
  * [`ChapelApplication`] 생성을 위한 빌더
  */
 open class ChapelApplicationBuilder: ChapelApplicationBuilderProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -699,46 +706,42 @@ open class ChapelApplicationBuilder: ChapelApplicationBuilderProtocol, @unchecke
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_chapelapplicationbuilder(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_chapelapplicationbuilder(self.handle, $0) }
     }
     /**
      * 새로운 [`ChapelApplicationBuilder`]를 만듭니다.
      */
 public convenience init() {
-    let pointer =
+    let handle =
         try! rustCall() {
     uniffi_rusaint_ffi_fn_constructor_chapelapplicationbuilder_new($0
     )
 }
-    self.init(unsafeFromRawPointer: pointer)
+    self.init(unsafeFromHandle: handle)
 }
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_chapelapplicationbuilder(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_chapelapplicationbuilder(handle, $0) }
     }
 
     
@@ -752,19 +755,20 @@ open func build(session: USaintSession)async throws  -> ChapelApplication  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_chapelapplicationbuilder_build(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterTypeUSaintSession_lower(session)
                 )
             },
-            pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_u64,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_u64,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_u64,
             liftFunc: FfiConverterTypeChapelApplication_lift,
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
+    
 }
 
 
@@ -772,33 +776,24 @@ open func build(session: USaintSession)async throws  -> ChapelApplication  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeChapelApplicationBuilder: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = ChapelApplicationBuilder
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> ChapelApplicationBuilder {
-        return ChapelApplicationBuilder(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> ChapelApplicationBuilder {
+        return ChapelApplicationBuilder(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: ChapelApplicationBuilder) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: ChapelApplicationBuilder) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ChapelApplicationBuilder {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: ChapelApplicationBuilder, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -806,14 +801,14 @@ public struct FfiConverterTypeChapelApplicationBuilder: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeChapelApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> ChapelApplicationBuilder {
-    return try FfiConverterTypeChapelApplicationBuilder.lift(pointer)
+public func FfiConverterTypeChapelApplicationBuilder_lift(_ handle: UInt64) throws -> ChapelApplicationBuilder {
+    return try FfiConverterTypeChapelApplicationBuilder.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeChapelApplicationBuilder_lower(_ value: ChapelApplicationBuilder) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeChapelApplicationBuilder_lower(_ value: ChapelApplicationBuilder) -> UInt64 {
     return FfiConverterTypeChapelApplicationBuilder.lower(value)
 }
 
@@ -866,13 +861,13 @@ public protocol CourseGradesApplicationProtocol: AnyObject, Sendable {
  * [학생 성적 조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMB3W0017)
  */
 open class CourseGradesApplication: CourseGradesApplicationProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -882,36 +877,32 @@ open class CourseGradesApplication: CourseGradesApplicationProtocol, @unchecked 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_coursegradesapplication(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_coursegradesapplication(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_coursegradesapplication(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_coursegradesapplication(handle, $0) }
     }
 
     
@@ -925,7 +916,7 @@ open func certificatedSummary(courseType: CourseType)async throws  -> GradeSumma
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursegradesapplication_certificated_summary(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterTypeCourseType_lower(courseType)
                 )
             },
@@ -945,7 +936,7 @@ open func classDetail(courseType: CourseType, year: UInt32, semester: SemesterTy
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursegradesapplication_class_detail(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterTypeCourseType_lower(courseType),FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterString.lower(code)
                 )
             },
@@ -968,7 +959,7 @@ open func classes(courseType: CourseType, year: UInt32, semester: SemesterType, 
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursegradesapplication_classes(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterTypeCourseType_lower(courseType),FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterBool.lower(includeDetails)
                 )
             },
@@ -989,7 +980,7 @@ open func getSelectedSemester()async throws  -> YearSemester  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursegradesapplication_get_selected_semester(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -1009,7 +1000,7 @@ open func recordedSummary(courseType: CourseType)async throws  -> GradeSummary  
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursegradesapplication_recorded_summary(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterTypeCourseType_lower(courseType)
                 )
             },
@@ -1029,7 +1020,7 @@ open func semesters(courseType: CourseType)async throws  -> [SemesterGrade]  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursegradesapplication_semesters(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterTypeCourseType_lower(courseType)
                 )
             },
@@ -1042,6 +1033,7 @@ open func semesters(courseType: CourseType)async throws  -> [SemesterGrade]  {
 }
     
 
+    
 }
 
 
@@ -1049,33 +1041,24 @@ open func semesters(courseType: CourseType)async throws  -> [SemesterGrade]  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeCourseGradesApplication: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = CourseGradesApplication
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseGradesApplication {
-        return CourseGradesApplication(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> CourseGradesApplication {
+        return CourseGradesApplication(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: CourseGradesApplication) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: CourseGradesApplication) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CourseGradesApplication {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: CourseGradesApplication, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -1083,14 +1066,14 @@ public struct FfiConverterTypeCourseGradesApplication: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeCourseGradesApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseGradesApplication {
-    return try FfiConverterTypeCourseGradesApplication.lift(pointer)
+public func FfiConverterTypeCourseGradesApplication_lift(_ handle: UInt64) throws -> CourseGradesApplication {
+    return try FfiConverterTypeCourseGradesApplication.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeCourseGradesApplication_lower(_ value: CourseGradesApplication) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeCourseGradesApplication_lower(_ value: CourseGradesApplication) -> UInt64 {
     return FfiConverterTypeCourseGradesApplication.lower(value)
 }
 
@@ -1114,13 +1097,13 @@ public protocol CourseGradesApplicationBuilderProtocol: AnyObject, Sendable {
  * [`CourseGradesApplication`] 생성을 위한 빌더
  */
 open class CourseGradesApplicationBuilder: CourseGradesApplicationBuilderProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -1130,46 +1113,42 @@ open class CourseGradesApplicationBuilder: CourseGradesApplicationBuilderProtoco
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_coursegradesapplicationbuilder(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_coursegradesapplicationbuilder(self.handle, $0) }
     }
     /**
      * 새로운 [`CourseGradesApplicationBuilder`]를 만듭니다.
      */
 public convenience init() {
-    let pointer =
+    let handle =
         try! rustCall() {
     uniffi_rusaint_ffi_fn_constructor_coursegradesapplicationbuilder_new($0
     )
 }
-    self.init(unsafeFromRawPointer: pointer)
+    self.init(unsafeFromHandle: handle)
 }
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_coursegradesapplicationbuilder(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_coursegradesapplicationbuilder(handle, $0) }
     }
 
     
@@ -1183,19 +1162,20 @@ open func build(session: USaintSession)async throws  -> CourseGradesApplication 
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursegradesapplicationbuilder_build(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterTypeUSaintSession_lower(session)
                 )
             },
-            pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_u64,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_u64,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_u64,
             liftFunc: FfiConverterTypeCourseGradesApplication_lift,
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
+    
 }
 
 
@@ -1203,33 +1183,24 @@ open func build(session: USaintSession)async throws  -> CourseGradesApplication 
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeCourseGradesApplicationBuilder: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = CourseGradesApplicationBuilder
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseGradesApplicationBuilder {
-        return CourseGradesApplicationBuilder(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> CourseGradesApplicationBuilder {
+        return CourseGradesApplicationBuilder(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: CourseGradesApplicationBuilder) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: CourseGradesApplicationBuilder) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CourseGradesApplicationBuilder {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: CourseGradesApplicationBuilder, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -1237,14 +1208,14 @@ public struct FfiConverterTypeCourseGradesApplicationBuilder: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeCourseGradesApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseGradesApplicationBuilder {
-    return try FfiConverterTypeCourseGradesApplicationBuilder.lift(pointer)
+public func FfiConverterTypeCourseGradesApplicationBuilder_lift(_ handle: UInt64) throws -> CourseGradesApplicationBuilder {
+    return try FfiConverterTypeCourseGradesApplicationBuilder.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeCourseGradesApplicationBuilder_lower(_ value: CourseGradesApplicationBuilder) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeCourseGradesApplicationBuilder_lower(_ value: CourseGradesApplicationBuilder) -> UInt64 {
     return FfiConverterTypeCourseGradesApplicationBuilder.lower(value)
 }
 
@@ -1324,13 +1295,13 @@ public protocol CourseScheduleApplicationProtocol: AnyObject, Sendable {
  * [강의시간표](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW2100)
  */
 open class CourseScheduleApplication: CourseScheduleApplicationProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -1340,36 +1311,32 @@ open class CourseScheduleApplication: CourseScheduleApplicationProtocol, @unchec
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_coursescheduleapplication(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_coursescheduleapplication(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_coursescheduleapplication(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_coursescheduleapplication(handle, $0) }
     }
 
     
@@ -1383,7 +1350,7 @@ open func chapelCategories(year: UInt32, semester: SemesterType)async throws  ->
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplication_chapel_categories(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
                 )
             },
@@ -1403,7 +1370,7 @@ open func collages(year: UInt32, semester: SemesterType)async throws  -> [String
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplication_collages(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
                 )
             },
@@ -1423,7 +1390,7 @@ open func connectedMajors(year: UInt32, semester: SemesterType)async throws  -> 
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplication_connected_majors(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
                 )
             },
@@ -1443,7 +1410,7 @@ open func departments(year: UInt32, semester: SemesterType, collage: String)asyn
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplication_departments(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterString.lower(collage)
                 )
             },
@@ -1463,7 +1430,7 @@ open func findLectures(year: UInt32, semester: SemesterType, lectureCategory: Le
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplication_find_lectures(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterTypeLectureCategory_lower(lectureCategory)
                 )
             },
@@ -1484,7 +1451,7 @@ open func getSelectedSemester()async throws  -> YearSemester  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplication_get_selected_semester(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -1504,7 +1471,7 @@ open func graduatedCollages(year: UInt32, semester: SemesterType)async throws  -
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplication_graduated_collages(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
                 )
             },
@@ -1524,7 +1491,7 @@ open func graduatedDepartments(year: UInt32, semester: SemesterType, collage: St
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplication_graduated_departments(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterString.lower(collage)
                 )
             },
@@ -1544,7 +1511,7 @@ open func majors(year: UInt32, semester: SemesterType, collage: String, departme
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplication_majors(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterString.lower(collage),FfiConverterString.lower(department)
                 )
             },
@@ -1564,7 +1531,7 @@ open func optionalElectiveCategories(year: UInt32, semester: SemesterType)async 
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplication_optional_elective_categories(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
                 )
             },
@@ -1584,7 +1551,7 @@ open func requiredElectives(year: UInt32, semester: SemesterType)async throws  -
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplication_required_electives(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
                 )
             },
@@ -1604,7 +1571,7 @@ open func unitedMajors(year: UInt32, semester: SemesterType)async throws  -> [St
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplication_united_majors(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
                 )
             },
@@ -1617,6 +1584,7 @@ open func unitedMajors(year: UInt32, semester: SemesterType)async throws  -> [St
 }
     
 
+    
 }
 
 
@@ -1624,33 +1592,24 @@ open func unitedMajors(year: UInt32, semester: SemesterType)async throws  -> [St
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeCourseScheduleApplication: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = CourseScheduleApplication
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseScheduleApplication {
-        return CourseScheduleApplication(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> CourseScheduleApplication {
+        return CourseScheduleApplication(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: CourseScheduleApplication) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: CourseScheduleApplication) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CourseScheduleApplication {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: CourseScheduleApplication, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -1658,14 +1617,14 @@ public struct FfiConverterTypeCourseScheduleApplication: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeCourseScheduleApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseScheduleApplication {
-    return try FfiConverterTypeCourseScheduleApplication.lift(pointer)
+public func FfiConverterTypeCourseScheduleApplication_lift(_ handle: UInt64) throws -> CourseScheduleApplication {
+    return try FfiConverterTypeCourseScheduleApplication.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeCourseScheduleApplication_lower(_ value: CourseScheduleApplication) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeCourseScheduleApplication_lower(_ value: CourseScheduleApplication) -> UInt64 {
     return FfiConverterTypeCourseScheduleApplication.lower(value)
 }
 
@@ -1689,13 +1648,13 @@ public protocol CourseScheduleApplicationBuilderProtocol: AnyObject, Sendable {
  * [`CourseScheduleApplication`] 생성을 위한 빌더
  */
 open class CourseScheduleApplicationBuilder: CourseScheduleApplicationBuilderProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -1705,46 +1664,42 @@ open class CourseScheduleApplicationBuilder: CourseScheduleApplicationBuilderPro
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_coursescheduleapplicationbuilder(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_coursescheduleapplicationbuilder(self.handle, $0) }
     }
     /**
      * 새로운 [`CourseScheduleApplicationBuilder`]를 만듭니다.
      */
 public convenience init() {
-    let pointer =
+    let handle =
         try! rustCall() {
     uniffi_rusaint_ffi_fn_constructor_coursescheduleapplicationbuilder_new($0
     )
 }
-    self.init(unsafeFromRawPointer: pointer)
+    self.init(unsafeFromHandle: handle)
 }
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_coursescheduleapplicationbuilder(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_coursescheduleapplicationbuilder(handle, $0) }
     }
 
     
@@ -1758,19 +1713,20 @@ open func build(session: USaintSession)async throws  -> CourseScheduleApplicatio
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_coursescheduleapplicationbuilder_build(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterTypeUSaintSession_lower(session)
                 )
             },
-            pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_u64,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_u64,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_u64,
             liftFunc: FfiConverterTypeCourseScheduleApplication_lift,
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
+    
 }
 
 
@@ -1778,33 +1734,24 @@ open func build(session: USaintSession)async throws  -> CourseScheduleApplicatio
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeCourseScheduleApplicationBuilder: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = CourseScheduleApplicationBuilder
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseScheduleApplicationBuilder {
-        return CourseScheduleApplicationBuilder(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> CourseScheduleApplicationBuilder {
+        return CourseScheduleApplicationBuilder(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: CourseScheduleApplicationBuilder) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: CourseScheduleApplicationBuilder) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CourseScheduleApplicationBuilder {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: CourseScheduleApplicationBuilder, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -1812,14 +1759,14 @@ public struct FfiConverterTypeCourseScheduleApplicationBuilder: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeCourseScheduleApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseScheduleApplicationBuilder {
-    return try FfiConverterTypeCourseScheduleApplicationBuilder.lift(pointer)
+public func FfiConverterTypeCourseScheduleApplicationBuilder_lift(_ handle: UInt64) throws -> CourseScheduleApplicationBuilder {
+    return try FfiConverterTypeCourseScheduleApplicationBuilder.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeCourseScheduleApplicationBuilder_lower(_ value: CourseScheduleApplicationBuilder) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeCourseScheduleApplicationBuilder_lower(_ value: CourseScheduleApplicationBuilder) -> UInt64 {
     return FfiConverterTypeCourseScheduleApplicationBuilder.lower(value)
 }
 
@@ -1848,13 +1795,13 @@ public protocol GraduationRequirementsApplicationProtocol: AnyObject, Sendable {
  * [졸업사정표](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW8015)
  */
 open class GraduationRequirementsApplication: GraduationRequirementsApplicationProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -1864,36 +1811,32 @@ open class GraduationRequirementsApplication: GraduationRequirementsApplicationP
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_graduationrequirementsapplication(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_graduationrequirementsapplication(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_graduationrequirementsapplication(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_graduationrequirementsapplication(handle, $0) }
     }
 
     
@@ -1907,7 +1850,7 @@ open func requirements()async throws  -> GraduationRequirements  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_graduationrequirementsapplication_requirements(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -1927,7 +1870,7 @@ open func studentInfo()async throws  -> GraduationStudent  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_graduationrequirementsapplication_student_info(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -1940,6 +1883,7 @@ open func studentInfo()async throws  -> GraduationStudent  {
 }
     
 
+    
 }
 
 
@@ -1947,33 +1891,24 @@ open func studentInfo()async throws  -> GraduationStudent  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeGraduationRequirementsApplication: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = GraduationRequirementsApplication
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> GraduationRequirementsApplication {
-        return GraduationRequirementsApplication(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> GraduationRequirementsApplication {
+        return GraduationRequirementsApplication(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: GraduationRequirementsApplication) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: GraduationRequirementsApplication) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GraduationRequirementsApplication {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: GraduationRequirementsApplication, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -1981,14 +1916,14 @@ public struct FfiConverterTypeGraduationRequirementsApplication: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeGraduationRequirementsApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> GraduationRequirementsApplication {
-    return try FfiConverterTypeGraduationRequirementsApplication.lift(pointer)
+public func FfiConverterTypeGraduationRequirementsApplication_lift(_ handle: UInt64) throws -> GraduationRequirementsApplication {
+    return try FfiConverterTypeGraduationRequirementsApplication.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeGraduationRequirementsApplication_lower(_ value: GraduationRequirementsApplication) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeGraduationRequirementsApplication_lower(_ value: GraduationRequirementsApplication) -> UInt64 {
     return FfiConverterTypeGraduationRequirementsApplication.lower(value)
 }
 
@@ -2012,13 +1947,13 @@ public protocol GraduationRequirementsApplicationBuilderProtocol: AnyObject, Sen
  * [`GraduationRequirementsApplication`] 생성을 위한 빌더
  */
 open class GraduationRequirementsApplicationBuilder: GraduationRequirementsApplicationBuilderProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -2028,46 +1963,42 @@ open class GraduationRequirementsApplicationBuilder: GraduationRequirementsAppli
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_graduationrequirementsapplicationbuilder(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_graduationrequirementsapplicationbuilder(self.handle, $0) }
     }
     /**
      * 새로운 [`GraduationRequirementsApplicationBuilder`]를 만듭니다.
      */
 public convenience init() {
-    let pointer =
+    let handle =
         try! rustCall() {
     uniffi_rusaint_ffi_fn_constructor_graduationrequirementsapplicationbuilder_new($0
     )
 }
-    self.init(unsafeFromRawPointer: pointer)
+    self.init(unsafeFromHandle: handle)
 }
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_graduationrequirementsapplicationbuilder(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_graduationrequirementsapplicationbuilder(handle, $0) }
     }
 
     
@@ -2081,19 +2012,20 @@ open func build(session: USaintSession)async throws  -> GraduationRequirementsAp
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_graduationrequirementsapplicationbuilder_build(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterTypeUSaintSession_lower(session)
                 )
             },
-            pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_u64,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_u64,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_u64,
             liftFunc: FfiConverterTypeGraduationRequirementsApplication_lift,
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
+    
 }
 
 
@@ -2101,33 +2033,24 @@ open func build(session: USaintSession)async throws  -> GraduationRequirementsAp
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeGraduationRequirementsApplicationBuilder: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = GraduationRequirementsApplicationBuilder
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> GraduationRequirementsApplicationBuilder {
-        return GraduationRequirementsApplicationBuilder(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> GraduationRequirementsApplicationBuilder {
+        return GraduationRequirementsApplicationBuilder(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: GraduationRequirementsApplicationBuilder) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: GraduationRequirementsApplicationBuilder) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GraduationRequirementsApplicationBuilder {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: GraduationRequirementsApplicationBuilder, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -2135,14 +2058,14 @@ public struct FfiConverterTypeGraduationRequirementsApplicationBuilder: FfiConve
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeGraduationRequirementsApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> GraduationRequirementsApplicationBuilder {
-    return try FfiConverterTypeGraduationRequirementsApplicationBuilder.lift(pointer)
+public func FfiConverterTypeGraduationRequirementsApplicationBuilder_lift(_ handle: UInt64) throws -> GraduationRequirementsApplicationBuilder {
+    return try FfiConverterTypeGraduationRequirementsApplicationBuilder.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeGraduationRequirementsApplicationBuilder_lower(_ value: GraduationRequirementsApplicationBuilder) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeGraduationRequirementsApplicationBuilder_lower(_ value: GraduationRequirementsApplicationBuilder) -> UInt64 {
     return FfiConverterTypeGraduationRequirementsApplicationBuilder.lower(value)
 }
 
@@ -2172,13 +2095,13 @@ public protocol LectureAssessmentApplicationProtocol: AnyObject, Sendable {
  * [강의평가조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMB2W1010)
  */
 open class LectureAssessmentApplication: LectureAssessmentApplicationProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -2188,36 +2111,32 @@ open class LectureAssessmentApplication: LectureAssessmentApplicationProtocol, @
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_lectureassessmentapplication(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_lectureassessmentapplication(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_lectureassessmentapplication(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_lectureassessmentapplication(handle, $0) }
     }
 
     
@@ -2231,7 +2150,7 @@ open func findAssessments(year: UInt32, semester: SemesterType, lectureName: Str
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_lectureassessmentapplication_find_assessments(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterOptionString.lower(lectureName),FfiConverterOptionUInt32.lower(lectureCode),FfiConverterOptionString.lower(professorName)
                 )
             },
@@ -2252,7 +2171,7 @@ open func getSelectedSemester()async throws  -> YearSemester  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_lectureassessmentapplication_get_selected_semester(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -2265,6 +2184,7 @@ open func getSelectedSemester()async throws  -> YearSemester  {
 }
     
 
+    
 }
 
 
@@ -2272,33 +2192,24 @@ open func getSelectedSemester()async throws  -> YearSemester  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeLectureAssessmentApplication: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = LectureAssessmentApplication
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> LectureAssessmentApplication {
-        return LectureAssessmentApplication(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> LectureAssessmentApplication {
+        return LectureAssessmentApplication(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: LectureAssessmentApplication) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: LectureAssessmentApplication) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LectureAssessmentApplication {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: LectureAssessmentApplication, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -2306,14 +2217,14 @@ public struct FfiConverterTypeLectureAssessmentApplication: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeLectureAssessmentApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> LectureAssessmentApplication {
-    return try FfiConverterTypeLectureAssessmentApplication.lift(pointer)
+public func FfiConverterTypeLectureAssessmentApplication_lift(_ handle: UInt64) throws -> LectureAssessmentApplication {
+    return try FfiConverterTypeLectureAssessmentApplication.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeLectureAssessmentApplication_lower(_ value: LectureAssessmentApplication) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeLectureAssessmentApplication_lower(_ value: LectureAssessmentApplication) -> UInt64 {
     return FfiConverterTypeLectureAssessmentApplication.lower(value)
 }
 
@@ -2337,13 +2248,13 @@ public protocol LectureAssessmentApplicationBuilderProtocol: AnyObject, Sendable
  * [`LectureAssessmentApplication`] 생성을 위한 빌더
  */
 open class LectureAssessmentApplicationBuilder: LectureAssessmentApplicationBuilderProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -2353,46 +2264,42 @@ open class LectureAssessmentApplicationBuilder: LectureAssessmentApplicationBuil
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_lectureassessmentapplicationbuilder(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_lectureassessmentapplicationbuilder(self.handle, $0) }
     }
     /**
      * 새로운 [`LectureAssessmentApplicationBuilder`]를 만듭니다.
      */
 public convenience init() {
-    let pointer =
+    let handle =
         try! rustCall() {
     uniffi_rusaint_ffi_fn_constructor_lectureassessmentapplicationbuilder_new($0
     )
 }
-    self.init(unsafeFromRawPointer: pointer)
+    self.init(unsafeFromHandle: handle)
 }
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_lectureassessmentapplicationbuilder(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_lectureassessmentapplicationbuilder(handle, $0) }
     }
 
     
@@ -2406,19 +2313,20 @@ open func build(session: USaintSession)async throws  -> LectureAssessmentApplica
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_lectureassessmentapplicationbuilder_build(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterTypeUSaintSession_lower(session)
                 )
             },
-            pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_u64,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_u64,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_u64,
             liftFunc: FfiConverterTypeLectureAssessmentApplication_lift,
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
+    
 }
 
 
@@ -2426,33 +2334,24 @@ open func build(session: USaintSession)async throws  -> LectureAssessmentApplica
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeLectureAssessmentApplicationBuilder: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = LectureAssessmentApplicationBuilder
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> LectureAssessmentApplicationBuilder {
-        return LectureAssessmentApplicationBuilder(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> LectureAssessmentApplicationBuilder {
+        return LectureAssessmentApplicationBuilder(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: LectureAssessmentApplicationBuilder) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: LectureAssessmentApplicationBuilder) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LectureAssessmentApplicationBuilder {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: LectureAssessmentApplicationBuilder, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -2460,14 +2359,14 @@ public struct FfiConverterTypeLectureAssessmentApplicationBuilder: FfiConverter 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeLectureAssessmentApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> LectureAssessmentApplicationBuilder {
-    return try FfiConverterTypeLectureAssessmentApplicationBuilder.lift(pointer)
+public func FfiConverterTypeLectureAssessmentApplicationBuilder_lift(_ handle: UInt64) throws -> LectureAssessmentApplicationBuilder {
+    return try FfiConverterTypeLectureAssessmentApplicationBuilder.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeLectureAssessmentApplicationBuilder_lower(_ value: LectureAssessmentApplicationBuilder) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeLectureAssessmentApplicationBuilder_lower(_ value: LectureAssessmentApplicationBuilder) -> UInt64 {
     return FfiConverterTypeLectureAssessmentApplicationBuilder.lower(value)
 }
 
@@ -2497,13 +2396,13 @@ public protocol PersonalCourseScheduleApplicationProtocol: AnyObject, Sendable {
  * [개인수업시간표](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW2102)
  */
 open class PersonalCourseScheduleApplication: PersonalCourseScheduleApplicationProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -2513,36 +2412,32 @@ open class PersonalCourseScheduleApplication: PersonalCourseScheduleApplicationP
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_personalcoursescheduleapplication(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_personalcoursescheduleapplication(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_personalcoursescheduleapplication(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_personalcoursescheduleapplication(handle, $0) }
     }
 
     
@@ -2557,7 +2452,7 @@ open func getSelectedSemester()async throws  -> YearSemester  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_personalcoursescheduleapplication_get_selected_semester(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -2577,7 +2472,7 @@ open func schedule(year: UInt32, semester: SemesterType)async throws  -> Persona
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_personalcoursescheduleapplication_schedule(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
                 )
             },
@@ -2590,6 +2485,7 @@ open func schedule(year: UInt32, semester: SemesterType)async throws  -> Persona
 }
     
 
+    
 }
 
 
@@ -2597,33 +2493,24 @@ open func schedule(year: UInt32, semester: SemesterType)async throws  -> Persona
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypePersonalCourseScheduleApplication: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = PersonalCourseScheduleApplication
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> PersonalCourseScheduleApplication {
-        return PersonalCourseScheduleApplication(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> PersonalCourseScheduleApplication {
+        return PersonalCourseScheduleApplication(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: PersonalCourseScheduleApplication) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: PersonalCourseScheduleApplication) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PersonalCourseScheduleApplication {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: PersonalCourseScheduleApplication, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -2631,14 +2518,14 @@ public struct FfiConverterTypePersonalCourseScheduleApplication: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypePersonalCourseScheduleApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> PersonalCourseScheduleApplication {
-    return try FfiConverterTypePersonalCourseScheduleApplication.lift(pointer)
+public func FfiConverterTypePersonalCourseScheduleApplication_lift(_ handle: UInt64) throws -> PersonalCourseScheduleApplication {
+    return try FfiConverterTypePersonalCourseScheduleApplication.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypePersonalCourseScheduleApplication_lower(_ value: PersonalCourseScheduleApplication) -> UnsafeMutableRawPointer {
+public func FfiConverterTypePersonalCourseScheduleApplication_lower(_ value: PersonalCourseScheduleApplication) -> UInt64 {
     return FfiConverterTypePersonalCourseScheduleApplication.lower(value)
 }
 
@@ -2662,13 +2549,13 @@ public protocol PersonalCourseScheduleApplicationBuilderProtocol: AnyObject, Sen
  * [`PersonalCourseScheduleApplication`] 생성을 위한 빌더
  */
 open class PersonalCourseScheduleApplicationBuilder: PersonalCourseScheduleApplicationBuilderProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -2678,46 +2565,42 @@ open class PersonalCourseScheduleApplicationBuilder: PersonalCourseScheduleAppli
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_personalcoursescheduleapplicationbuilder(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_personalcoursescheduleapplicationbuilder(self.handle, $0) }
     }
     /**
      * 새로운 [`PersonalCourseScheduleApplicationBuilder`]를 만듭니다.
      */
 public convenience init() {
-    let pointer =
+    let handle =
         try! rustCall() {
     uniffi_rusaint_ffi_fn_constructor_personalcoursescheduleapplicationbuilder_new($0
     )
 }
-    self.init(unsafeFromRawPointer: pointer)
+    self.init(unsafeFromHandle: handle)
 }
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_personalcoursescheduleapplicationbuilder(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_personalcoursescheduleapplicationbuilder(handle, $0) }
     }
 
     
@@ -2731,19 +2614,20 @@ open func build(session: USaintSession)async throws  -> PersonalCourseScheduleAp
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_personalcoursescheduleapplicationbuilder_build(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterTypeUSaintSession_lower(session)
                 )
             },
-            pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_u64,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_u64,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_u64,
             liftFunc: FfiConverterTypePersonalCourseScheduleApplication_lift,
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
+    
 }
 
 
@@ -2751,33 +2635,24 @@ open func build(session: USaintSession)async throws  -> PersonalCourseScheduleAp
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypePersonalCourseScheduleApplicationBuilder: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = PersonalCourseScheduleApplicationBuilder
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> PersonalCourseScheduleApplicationBuilder {
-        return PersonalCourseScheduleApplicationBuilder(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> PersonalCourseScheduleApplicationBuilder {
+        return PersonalCourseScheduleApplicationBuilder(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: PersonalCourseScheduleApplicationBuilder) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: PersonalCourseScheduleApplicationBuilder) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PersonalCourseScheduleApplicationBuilder {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: PersonalCourseScheduleApplicationBuilder, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -2785,14 +2660,14 @@ public struct FfiConverterTypePersonalCourseScheduleApplicationBuilder: FfiConve
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypePersonalCourseScheduleApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> PersonalCourseScheduleApplicationBuilder {
-    return try FfiConverterTypePersonalCourseScheduleApplicationBuilder.lift(pointer)
+public func FfiConverterTypePersonalCourseScheduleApplicationBuilder_lift(_ handle: UInt64) throws -> PersonalCourseScheduleApplicationBuilder {
+    return try FfiConverterTypePersonalCourseScheduleApplicationBuilder.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypePersonalCourseScheduleApplicationBuilder_lower(_ value: PersonalCourseScheduleApplicationBuilder) -> UnsafeMutableRawPointer {
+public func FfiConverterTypePersonalCourseScheduleApplicationBuilder_lower(_ value: PersonalCourseScheduleApplicationBuilder) -> UInt64 {
     return FfiConverterTypePersonalCourseScheduleApplicationBuilder.lower(value)
 }
 
@@ -2816,13 +2691,13 @@ public protocol ScholarshipsApplicationProtocol: AnyObject, Sendable {
  * [장학금수혜내역조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW7530n)
  */
 open class ScholarshipsApplication: ScholarshipsApplicationProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -2832,36 +2707,32 @@ open class ScholarshipsApplication: ScholarshipsApplicationProtocol, @unchecked 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_scholarshipsapplication(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_scholarshipsapplication(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_scholarshipsapplication(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_scholarshipsapplication(handle, $0) }
     }
 
     
@@ -2875,7 +2746,7 @@ open func scholarships()async throws  -> [Scholarship]  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_scholarshipsapplication_scholarships(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -2888,6 +2759,7 @@ open func scholarships()async throws  -> [Scholarship]  {
 }
     
 
+    
 }
 
 
@@ -2895,33 +2767,24 @@ open func scholarships()async throws  -> [Scholarship]  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeScholarshipsApplication: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = ScholarshipsApplication
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> ScholarshipsApplication {
-        return ScholarshipsApplication(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> ScholarshipsApplication {
+        return ScholarshipsApplication(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: ScholarshipsApplication) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: ScholarshipsApplication) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScholarshipsApplication {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: ScholarshipsApplication, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -2929,14 +2792,14 @@ public struct FfiConverterTypeScholarshipsApplication: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeScholarshipsApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> ScholarshipsApplication {
-    return try FfiConverterTypeScholarshipsApplication.lift(pointer)
+public func FfiConverterTypeScholarshipsApplication_lift(_ handle: UInt64) throws -> ScholarshipsApplication {
+    return try FfiConverterTypeScholarshipsApplication.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeScholarshipsApplication_lower(_ value: ScholarshipsApplication) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeScholarshipsApplication_lower(_ value: ScholarshipsApplication) -> UInt64 {
     return FfiConverterTypeScholarshipsApplication.lower(value)
 }
 
@@ -2960,13 +2823,13 @@ public protocol ScholarshipsApplicationBuilderProtocol: AnyObject, Sendable {
  * [`ScholarshipsApplication`] 생성을 위한 빌더
  */
 open class ScholarshipsApplicationBuilder: ScholarshipsApplicationBuilderProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -2976,46 +2839,42 @@ open class ScholarshipsApplicationBuilder: ScholarshipsApplicationBuilderProtoco
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_scholarshipsapplicationbuilder(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_scholarshipsapplicationbuilder(self.handle, $0) }
     }
     /**
      * 새로운 [`ScholarshipsApplicationBuilder`]를 만듭니다.
      */
 public convenience init() {
-    let pointer =
+    let handle =
         try! rustCall() {
     uniffi_rusaint_ffi_fn_constructor_scholarshipsapplicationbuilder_new($0
     )
 }
-    self.init(unsafeFromRawPointer: pointer)
+    self.init(unsafeFromHandle: handle)
 }
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_scholarshipsapplicationbuilder(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_scholarshipsapplicationbuilder(handle, $0) }
     }
 
     
@@ -3029,19 +2888,20 @@ open func build(session: USaintSession)async throws  -> ScholarshipsApplication 
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_scholarshipsapplicationbuilder_build(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterTypeUSaintSession_lower(session)
                 )
             },
-            pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_u64,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_u64,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_u64,
             liftFunc: FfiConverterTypeScholarshipsApplication_lift,
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
+    
 }
 
 
@@ -3049,33 +2909,24 @@ open func build(session: USaintSession)async throws  -> ScholarshipsApplication 
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeScholarshipsApplicationBuilder: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = ScholarshipsApplicationBuilder
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> ScholarshipsApplicationBuilder {
-        return ScholarshipsApplicationBuilder(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> ScholarshipsApplicationBuilder {
+        return ScholarshipsApplicationBuilder(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: ScholarshipsApplicationBuilder) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: ScholarshipsApplicationBuilder) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ScholarshipsApplicationBuilder {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: ScholarshipsApplicationBuilder, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -3083,14 +2934,14 @@ public struct FfiConverterTypeScholarshipsApplicationBuilder: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeScholarshipsApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> ScholarshipsApplicationBuilder {
-    return try FfiConverterTypeScholarshipsApplicationBuilder.lift(pointer)
+public func FfiConverterTypeScholarshipsApplicationBuilder_lift(_ handle: UInt64) throws -> ScholarshipsApplicationBuilder {
+    return try FfiConverterTypeScholarshipsApplicationBuilder.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeScholarshipsApplicationBuilder_lower(_ value: ScholarshipsApplicationBuilder) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeScholarshipsApplicationBuilder_lower(_ value: ScholarshipsApplicationBuilder) -> UInt64 {
     return FfiConverterTypeScholarshipsApplicationBuilder.lower(value)
 }
 
@@ -3159,13 +3010,13 @@ public protocol StudentInformationApplicationProtocol: AnyObject, Sendable {
  * [학생 정보 수정 및 조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW1001n)
  */
 open class StudentInformationApplication: StudentInformationApplicationProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -3175,36 +3026,32 @@ open class StudentInformationApplication: StudentInformationApplicationProtocol,
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_studentinformationapplication(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_studentinformationapplication(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_studentinformationapplication(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_studentinformationapplication(handle, $0) }
     }
 
     
@@ -3218,7 +3065,7 @@ open func academicRecord()async throws  -> StudentAcademicRecords  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_studentinformationapplication_academic_record(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -3238,7 +3085,7 @@ open func bankAccount()async throws  -> StudentBankAccount  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_studentinformationapplication_bank_account(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -3258,7 +3105,7 @@ open func family()async throws  -> StudentFamily  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_studentinformationapplication_family(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -3278,7 +3125,7 @@ open func general()async throws  -> StudentInformation  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_studentinformationapplication_general(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -3298,7 +3145,7 @@ open func graduation()async throws  -> StudentGraduation  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_studentinformationapplication_graduation(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -3318,7 +3165,7 @@ open func qualifications()async throws  -> StudentQualification  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_studentinformationapplication_qualifications(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -3338,7 +3185,7 @@ open func religion()async throws  -> StudentReligion  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_studentinformationapplication_religion(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -3358,7 +3205,7 @@ open func researchBankAccount()async throws  -> StudentResearchBankAccount  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_studentinformationapplication_research_bank_account(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -3378,7 +3225,7 @@ open func transfer()async throws  -> StudentTransferRecords  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_studentinformationapplication_transfer(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -3398,7 +3245,7 @@ open func work()async throws  -> StudentWorkInformation  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_studentinformationapplication_work(
-                    self.uniffiClonePointer()
+                    self.uniffiCloneHandle()
                     
                 )
             },
@@ -3411,6 +3258,7 @@ open func work()async throws  -> StudentWorkInformation  {
 }
     
 
+    
 }
 
 
@@ -3418,33 +3266,24 @@ open func work()async throws  -> StudentWorkInformation  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeStudentInformationApplication: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = StudentInformationApplication
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> StudentInformationApplication {
-        return StudentInformationApplication(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> StudentInformationApplication {
+        return StudentInformationApplication(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: StudentInformationApplication) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: StudentInformationApplication) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentInformationApplication {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: StudentInformationApplication, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -3452,14 +3291,14 @@ public struct FfiConverterTypeStudentInformationApplication: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeStudentInformationApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> StudentInformationApplication {
-    return try FfiConverterTypeStudentInformationApplication.lift(pointer)
+public func FfiConverterTypeStudentInformationApplication_lift(_ handle: UInt64) throws -> StudentInformationApplication {
+    return try FfiConverterTypeStudentInformationApplication.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeStudentInformationApplication_lower(_ value: StudentInformationApplication) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeStudentInformationApplication_lower(_ value: StudentInformationApplication) -> UInt64 {
     return FfiConverterTypeStudentInformationApplication.lower(value)
 }
 
@@ -3483,13 +3322,13 @@ public protocol StudentInformationApplicationBuilderProtocol: AnyObject, Sendabl
  * [`StudentInformationApplication`] 생성을 위한 빌더
  */
 open class StudentInformationApplicationBuilder: StudentInformationApplicationBuilderProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -3499,46 +3338,42 @@ open class StudentInformationApplicationBuilder: StudentInformationApplicationBu
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_studentinformationapplicationbuilder(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_studentinformationapplicationbuilder(self.handle, $0) }
     }
     /**
      * 새로운 [`StudentInformationApplicationBuilder`]를 만듭니다.
      */
 public convenience init() {
-    let pointer =
+    let handle =
         try! rustCall() {
     uniffi_rusaint_ffi_fn_constructor_studentinformationapplicationbuilder_new($0
     )
 }
-    self.init(unsafeFromRawPointer: pointer)
+    self.init(unsafeFromHandle: handle)
 }
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_studentinformationapplicationbuilder(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_studentinformationapplicationbuilder(handle, $0) }
     }
 
     
@@ -3552,19 +3387,20 @@ open func build(session: USaintSession)async throws  -> StudentInformationApplic
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_studentinformationapplicationbuilder_build(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterTypeUSaintSession_lower(session)
                 )
             },
-            pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_u64,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_u64,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_u64,
             liftFunc: FfiConverterTypeStudentInformationApplication_lift,
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
+    
 }
 
 
@@ -3572,33 +3408,24 @@ open func build(session: USaintSession)async throws  -> StudentInformationApplic
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeStudentInformationApplicationBuilder: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = StudentInformationApplicationBuilder
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> StudentInformationApplicationBuilder {
-        return StudentInformationApplicationBuilder(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> StudentInformationApplicationBuilder {
+        return StudentInformationApplicationBuilder(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: StudentInformationApplicationBuilder) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: StudentInformationApplicationBuilder) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> StudentInformationApplicationBuilder {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: StudentInformationApplicationBuilder, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -3606,14 +3433,14 @@ public struct FfiConverterTypeStudentInformationApplicationBuilder: FfiConverter
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeStudentInformationApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> StudentInformationApplicationBuilder {
-    return try FfiConverterTypeStudentInformationApplicationBuilder.lift(pointer)
+public func FfiConverterTypeStudentInformationApplicationBuilder_lift(_ handle: UInt64) throws -> StudentInformationApplicationBuilder {
+    return try FfiConverterTypeStudentInformationApplicationBuilder.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeStudentInformationApplicationBuilder_lower(_ value: StudentInformationApplicationBuilder) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeStudentInformationApplicationBuilder_lower(_ value: StudentInformationApplicationBuilder) -> UInt64 {
     return FfiConverterTypeStudentInformationApplicationBuilder.lower(value)
 }
 
@@ -3634,13 +3461,13 @@ public protocol USaintSessionProtocol: AnyObject, Sendable {
  * [`USaintSessionBuilder`]를 이용해 생성합니다.
  */
 open class USaintSession: USaintSessionProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -3650,42 +3477,39 @@ open class USaintSession: USaintSessionProtocol, @unchecked Sendable {
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_usaintsession(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_usaintsession(self.handle, $0) }
     }
     // No primary constructor declared for this class.
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_usaintsession(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_usaintsession(handle, $0) }
     }
 
     
 
     
 
+    
 }
 
 
@@ -3693,33 +3517,24 @@ open class USaintSession: USaintSessionProtocol, @unchecked Sendable {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeUSaintSession: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = USaintSession
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> USaintSession {
-        return USaintSession(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> USaintSession {
+        return USaintSession(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: USaintSession) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: USaintSession) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> USaintSession {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: USaintSession, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -3727,14 +3542,14 @@ public struct FfiConverterTypeUSaintSession: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeUSaintSession_lift(_ pointer: UnsafeMutableRawPointer) throws -> USaintSession {
-    return try FfiConverterTypeUSaintSession.lift(pointer)
+public func FfiConverterTypeUSaintSession_lift(_ handle: UInt64) throws -> USaintSession {
+    return try FfiConverterTypeUSaintSession.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeUSaintSession_lower(_ value: USaintSession) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeUSaintSession_lower(_ value: USaintSession) -> UInt64 {
     return FfiConverterTypeUSaintSession.lower(value)
 }
 
@@ -3784,13 +3599,13 @@ public protocol USaintSessionBuilderProtocol: AnyObject, Sendable {
  * [`USaintSession`]을 생성하기 위한 빌더
  */
 open class USaintSessionBuilder: USaintSessionBuilderProtocol, @unchecked Sendable {
-    fileprivate let pointer: UnsafeMutableRawPointer!
+    fileprivate let handle: UInt64
 
-    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+    /// Used to instantiate a [FFIObject] without an actual handle, for fakes in tests, mostly.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public struct NoPointer {
+    public struct NoHandle {
         public init() {}
     }
 
@@ -3800,46 +3615,42 @@ open class USaintSessionBuilder: USaintSessionBuilderProtocol, @unchecked Sendab
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
-        self.pointer = pointer
+    required public init(unsafeFromHandle handle: UInt64) {
+        self.handle = handle
     }
 
     // This constructor can be used to instantiate a fake object.
-    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    // - Parameter noHandle: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
     //
     // - Warning:
-    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing handle the FFI lower functions will crash.
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public init(noPointer: NoPointer) {
-        self.pointer = nil
+    public init(noHandle: NoHandle) {
+        self.handle = 0
     }
 
 #if swift(>=5.8)
     @_documentation(visibility: private)
 #endif
-    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
-        return try! rustCall { uniffi_rusaint_ffi_fn_clone_usaintsessionbuilder(self.pointer, $0) }
+    public func uniffiCloneHandle() -> UInt64 {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_usaintsessionbuilder(self.handle, $0) }
     }
     /**
      * 새로운 [`USaintSessionBuilder`]를 만듭니다.
      */
 public convenience init() {
-    let pointer =
+    let handle =
         try! rustCall() {
     uniffi_rusaint_ffi_fn_constructor_usaintsessionbuilder_new($0
     )
 }
-    self.init(unsafeFromRawPointer: pointer)
+    self.init(unsafeFromHandle: handle)
 }
 
     deinit {
-        guard let pointer = pointer else {
-            return
-        }
-
-        try! rustCall { uniffi_rusaint_ffi_fn_free_usaintsessionbuilder(pointer, $0) }
+        try! rustCall { uniffi_rusaint_ffi_fn_free_usaintsessionbuilder(handle, $0) }
     }
 
     
@@ -3856,7 +3667,8 @@ public convenience init() {
      */
 open func anonymous() -> USaintSession  {
     return try!  FfiConverterTypeUSaintSession_lift(try! rustCall() {
-    uniffi_rusaint_ffi_fn_method_usaintsessionbuilder_anonymous(self.uniffiClonePointer(),$0
+    uniffi_rusaint_ffi_fn_method_usaintsessionbuilder_anonymous(
+            self.uniffiCloneHandle(),$0
     )
 })
 }
@@ -3874,13 +3686,13 @@ open func withPassword(id: String, password: String)async throws  -> USaintSessi
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_usaintsessionbuilder_with_password(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterString.lower(id),FfiConverterString.lower(password)
                 )
             },
-            pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_u64,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_u64,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_u64,
             liftFunc: FfiConverterTypeUSaintSession_lift,
             errorHandler: FfiConverterTypeRusaintError_lift
         )
@@ -3899,19 +3711,20 @@ open func withToken(id: String, token: String)async throws  -> USaintSession  {
         try  await uniffiRustCallAsync(
             rustFutureFunc: {
                 uniffi_rusaint_ffi_fn_method_usaintsessionbuilder_with_token(
-                    self.uniffiClonePointer(),
+                    self.uniffiCloneHandle(),
                     FfiConverterString.lower(id),FfiConverterString.lower(token)
                 )
             },
-            pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
-            completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
-            freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_u64,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_u64,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_u64,
             liftFunc: FfiConverterTypeUSaintSession_lift,
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
     
 
+    
 }
 
 
@@ -3919,33 +3732,24 @@ open func withToken(id: String, token: String)async throws  -> USaintSession  {
 @_documentation(visibility: private)
 #endif
 public struct FfiConverterTypeUSaintSessionBuilder: FfiConverter {
-
-    typealias FfiType = UnsafeMutableRawPointer
+    typealias FfiType = UInt64
     typealias SwiftType = USaintSessionBuilder
 
-    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> USaintSessionBuilder {
-        return USaintSessionBuilder(unsafeFromRawPointer: pointer)
+    public static func lift(_ handle: UInt64) throws -> USaintSessionBuilder {
+        return USaintSessionBuilder(unsafeFromHandle: handle)
     }
 
-    public static func lower(_ value: USaintSessionBuilder) -> UnsafeMutableRawPointer {
-        return value.uniffiClonePointer()
+    public static func lower(_ value: USaintSessionBuilder) -> UInt64 {
+        return value.uniffiCloneHandle()
     }
 
     public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> USaintSessionBuilder {
-        let v: UInt64 = try readInt(&buf)
-        // The Rust code won't compile if a pointer won't fit in a UInt64.
-        // We have to go via `UInt` because that's the thing that's the size of a pointer.
-        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
-        if (ptr == nil) {
-            throw UniffiInternalError.unexpectedNullPointer
-        }
-        return try lift(ptr!)
+        let handle: UInt64 = try readInt(&buf)
+        return try lift(handle)
     }
 
     public static func write(_ value: USaintSessionBuilder, into buf: inout [UInt8]) {
-        // This fiddling is because `Int` is the thing that's the same size as a pointer.
-        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
-        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+        writeInt(&buf, lower(value))
     }
 }
 
@@ -3953,21 +3757,21 @@ public struct FfiConverterTypeUSaintSessionBuilder: FfiConverter {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeUSaintSessionBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> USaintSessionBuilder {
-    return try FfiConverterTypeUSaintSessionBuilder.lift(pointer)
+public func FfiConverterTypeUSaintSessionBuilder_lift(_ handle: UInt64) throws -> USaintSessionBuilder {
+    return try FfiConverterTypeUSaintSessionBuilder.lift(handle)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeUSaintSessionBuilder_lower(_ value: USaintSessionBuilder) -> UnsafeMutableRawPointer {
+public func FfiConverterTypeUSaintSessionBuilder_lower(_ value: USaintSessionBuilder) -> UInt64 {
     return FfiConverterTypeUSaintSessionBuilder.lower(value)
 }
 
 
 
 
-public struct YearSemester {
+public struct YearSemester: Equatable, Hashable {
     public let year: UInt32
     public let semester: SemesterType
 
@@ -3977,31 +3781,13 @@ public struct YearSemester {
         self.year = year
         self.semester = semester
     }
+
+    
 }
 
 #if compiler(>=6)
 extension YearSemester: Sendable {}
 #endif
-
-
-extension YearSemester: Equatable, Hashable {
-    public static func ==(lhs: YearSemester, rhs: YearSemester) -> Bool {
-        if lhs.year != rhs.year {
-            return false
-        }
-        if lhs.semester != rhs.semester {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(year)
-        hasher.combine(semester)
-    }
-}
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4040,14 +3826,25 @@ public func FfiConverterTypeYearSemester_lower(_ value: YearSemester) -> RustBuf
 /**
  * Rusaint에서 반환하는 기본 오류
  */
-public enum RusaintError: Swift.Error {
+public enum RusaintError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
 
     
     
     case General(message: String)
     
+
+    
+
+    
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+    
 }
 
+#if compiler(>=6)
+extension RusaintError: Sendable {}
+#endif
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4099,21 +3896,6 @@ public func FfiConverterTypeRusaintError_lift(_ buf: RustBuffer) throws -> Rusai
 public func FfiConverterTypeRusaintError_lower(_ value: RusaintError) -> RustBuffer {
     return FfiConverterTypeRusaintError.lower(value)
 }
-
-
-extension RusaintError: Equatable, Hashable {}
-
-
-
-
-extension RusaintError: Foundation.LocalizedError {
-    public var errorDescription: String? {
-        String(reflecting: self)
-    }
-}
-
-
-
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
@@ -4339,7 +4121,7 @@ fileprivate struct FfiConverterDictionaryStringFloat: FfiConverterRustBuffer {
     }
 }
 private let UNIFFI_RUST_FUTURE_POLL_READY: Int8 = 0
-private let UNIFFI_RUST_FUTURE_POLL_MAYBE_READY: Int8 = 1
+private let UNIFFI_RUST_FUTURE_POLL_WAKE: Int8 = 1
 
 fileprivate let uniffiContinuationHandleMap = UniffiHandleMap<UnsafeContinuation<Int8, Never>>()
 
@@ -4363,7 +4145,9 @@ fileprivate func uniffiRustCallAsync<F, T>(
         pollResult = await withUnsafeContinuation {
             pollFunc(
                 rustFuture,
-                uniffiFutureContinuationCallback,
+                { handle, pollResult in
+                    uniffiFutureContinuationCallback(handle: handle, pollResult: pollResult)
+                },
                 uniffiContinuationHandleMap.insert(obj: $0)
             )
         }
@@ -4394,7 +4178,7 @@ private enum InitializationResult {
 // the code inside is only computed once.
 private let initializationResult: InitializationResult = {
     // Get the bindings contract version from our ComponentInterface
-    let bindings_contract_version = 29
+    let bindings_contract_version = 30
     // Get the scaffolding contract version by calling the into the dylib
     let scaffolding_contract_version = ffi_rusaint_ffi_uniffi_contract_version()
     if bindings_contract_version != scaffolding_contract_version {
@@ -4478,7 +4262,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_rusaint_ffi_checksum_method_graduationrequirementsapplicationbuilder_build() != 18426) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_rusaint_ffi_checksum_method_lectureassessmentapplication_find_assessments() != 53523) {
+    if (uniffi_rusaint_ffi_checksum_method_lectureassessmentapplication_find_assessments() != 35425) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_lectureassessmentapplication_get_selected_semester() != 2234) {
