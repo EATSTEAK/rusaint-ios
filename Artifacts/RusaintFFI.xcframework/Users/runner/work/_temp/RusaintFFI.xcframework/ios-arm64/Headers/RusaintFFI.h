@@ -694,6 +694,11 @@ void*_Nonnull uniffi_rusaint_ffi_fn_clone_usaintsession(void*_Nonnull ptr, RustC
 void uniffi_rusaint_ffi_fn_free_usaintsession(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_FN_METHOD_USAINTSESSION_TO_JSON
+#define UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_FN_METHOD_USAINTSESSION_TO_JSON
+RustBuffer uniffi_rusaint_ffi_fn_method_usaintsession_to_json(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_FN_CLONE_USAINTSESSIONBUILDER
 #define UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_FN_CLONE_USAINTSESSIONBUILDER
 void*_Nonnull uniffi_rusaint_ffi_fn_clone_usaintsessionbuilder(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
@@ -713,6 +718,11 @@ void*_Nonnull uniffi_rusaint_ffi_fn_constructor_usaintsessionbuilder_new(RustCal
 #ifndef UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_FN_METHOD_USAINTSESSIONBUILDER_ANONYMOUS
 #define UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_FN_METHOD_USAINTSESSIONBUILDER_ANONYMOUS
 void*_Nonnull uniffi_rusaint_ffi_fn_method_usaintsessionbuilder_anonymous(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_FN_METHOD_USAINTSESSIONBUILDER_FROM_JSON
+#define UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_FN_METHOD_USAINTSESSIONBUILDER_FROM_JSON
+void*_Nonnull uniffi_rusaint_ffi_fn_method_usaintsessionbuilder_from_json(void*_Nonnull ptr, RustBuffer json, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_FN_METHOD_USAINTSESSIONBUILDER_WITH_PASSWORD
@@ -1275,9 +1285,21 @@ uint16_t uniffi_rusaint_ffi_checksum_method_studentinformationapplicationbuilder
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_CHECKSUM_METHOD_USAINTSESSION_TO_JSON
+#define UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_CHECKSUM_METHOD_USAINTSESSION_TO_JSON
+uint16_t uniffi_rusaint_ffi_checksum_method_usaintsession_to_json(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_CHECKSUM_METHOD_USAINTSESSIONBUILDER_ANONYMOUS
 #define UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_CHECKSUM_METHOD_USAINTSESSIONBUILDER_ANONYMOUS
 uint16_t uniffi_rusaint_ffi_checksum_method_usaintsessionbuilder_anonymous(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_CHECKSUM_METHOD_USAINTSESSIONBUILDER_FROM_JSON
+#define UNIFFI_FFIDEF_UNIFFI_RUSAINT_FFI_CHECKSUM_METHOD_USAINTSESSIONBUILDER_FROM_JSON
+uint16_t uniffi_rusaint_ffi_checksum_method_usaintsessionbuilder_from_json(void
     
 );
 #endif

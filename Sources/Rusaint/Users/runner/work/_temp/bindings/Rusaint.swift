@@ -3628,6 +3628,11 @@ public func FfiConverterTypeStudentInformationApplicationBuilder_lower(_ value: 
  */
 public protocol USaintSessionProtocol: AnyObject, Sendable {
     
+    /**
+     * 세션을 json 형식으로 변환합니다.
+     */
+    func toJson() throws  -> String
+    
 }
 /**
  * u-saint에서 사용할 세션
@@ -3684,6 +3689,16 @@ open class USaintSession: USaintSessionProtocol, @unchecked Sendable {
 
     
 
+    
+    /**
+     * 세션을 json 형식으로 변환합니다.
+     */
+open func toJson()throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeRusaintError_lift) {
+    uniffi_rusaint_ffi_fn_method_usaintsession_to_json(self.uniffiClonePointer(),$0
+    )
+})
+}
     
 
 }
@@ -3758,6 +3773,11 @@ public protocol USaintSessionBuilderProtocol: AnyObject, Sendable {
      * ```
      */
     func anonymous()  -> USaintSession
+    
+    /**
+     * json 형식으로 저장된 세션을 읽어 세션을 생성합니다.
+     */
+    func fromJson(json: String) throws  -> USaintSession
     
     /**
      * ID, 비밀번호로 세션을 만듭니다.
@@ -3857,6 +3877,17 @@ public convenience init() {
 open func anonymous() -> USaintSession  {
     return try!  FfiConverterTypeUSaintSession_lift(try! rustCall() {
     uniffi_rusaint_ffi_fn_method_usaintsessionbuilder_anonymous(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+    /**
+     * json 형식으로 저장된 세션을 읽어 세션을 생성합니다.
+     */
+open func fromJson(json: String)throws  -> USaintSession  {
+    return try  FfiConverterTypeUSaintSession_lift(try rustCallWithError(FfiConverterTypeRusaintError_lift) {
+    uniffi_rusaint_ffi_fn_method_usaintsessionbuilder_from_json(self.uniffiClonePointer(),
+        FfiConverterString.lower(json),$0
     )
 })
 }
@@ -4535,7 +4566,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_rusaint_ffi_checksum_method_studentinformationapplicationbuilder_build() != 12986) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_rusaint_ffi_checksum_method_usaintsession_to_json() != 38077) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_rusaint_ffi_checksum_method_usaintsessionbuilder_anonymous() != 59232) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_usaintsessionbuilder_from_json() != 55018) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_usaintsessionbuilder_with_password() != 35896) {
