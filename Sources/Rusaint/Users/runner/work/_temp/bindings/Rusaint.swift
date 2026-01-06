@@ -513,6 +513,16 @@ public protocol ChapelApplicationProtocol: AnyObject, Sendable {
      */
     func information(year: UInt32, semester: SemesterType) async throws  -> ChapelInformation
     
+    /**
+     * 최신 정보를 조회합니다. 새로고침 시 유용합니다.
+     */
+    func lookup() async throws 
+    
+    /**
+     * 페이지를 새로고침합니다.
+     */
+    func reload() async throws 
+    
 }
 /**
  * [채플정보조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW3681)
@@ -606,6 +616,46 @@ open func information(year: UInt32, semester: SemesterType)async throws  -> Chap
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeChapelInformation_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
+     * 최신 정보를 조회합니다. 새로고침 시 유용합니다.
+     */
+open func lookup()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_chapelapplication_lookup(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_void,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_void,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
+     * 페이지를 새로고침합니다.
+     */
+open func reload()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_chapelapplication_reload(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_void,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_void,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_void,
+            liftFunc: { $0 },
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
@@ -852,9 +902,19 @@ public protocol CourseGradesApplicationProtocol: AnyObject, Sendable {
     func getSelectedSemester() async throws  -> YearSemester
     
     /**
+     * 최신 정보를 조회합니다. 새로고침 시 유용합니다.
+     */
+    func lookup() async throws 
+    
+    /**
      * 전체 학기의 학적부 평점 정보를 가져옵니다.
      */
     func recordedSummary(courseType: CourseType) async throws  -> GradeSummary
+    
+    /**
+     * 페이지를 새로고침합니다.
+     */
+    func reload() async throws 
     
     /**
      * 학기별 평점 정보를 가져옵니다.
@@ -1002,6 +1062,26 @@ open func getSelectedSemester()async throws  -> YearSemester  {
 }
     
     /**
+     * 최신 정보를 조회합니다. 새로고침 시 유용합니다.
+     */
+open func lookup()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursegradesapplication_lookup(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_void,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_void,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
      * 전체 학기의 학적부 평점 정보를 가져옵니다.
      */
 open func recordedSummary(courseType: CourseType)async throws  -> GradeSummary  {
@@ -1017,6 +1097,26 @@ open func recordedSummary(courseType: CourseType)async throws  -> GradeSummary  
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeGradeSummary_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
+     * 페이지를 새로고침합니다.
+     */
+open func reload()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursegradesapplication_reload(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_void,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_void,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_void,
+            liftFunc: { $0 },
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
@@ -1310,6 +1410,11 @@ public protocol CourseScheduleApplicationProtocol: AnyObject, Sendable {
     func optionalElectiveCategories(year: UInt32, semester: SemesterType) async throws  -> [String]
     
     /**
+     * 페이지를 새로고침합니다.
+     */
+    func reload() async throws 
+    
+    /**
      * 선택한 학기의 교양필수 과목명 목록을 가져옵니다.
      */
     func requiredElectives(year: UInt32, semester: SemesterType) async throws  -> [String]
@@ -1577,6 +1682,26 @@ open func optionalElectiveCategories(year: UInt32, semester: SemesterType)async 
 }
     
     /**
+     * 페이지를 새로고침합니다.
+     */
+open func reload()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_reload(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_void,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_void,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
      * 선택한 학기의 교양필수 과목명 목록을 가져옵니다.
      */
 open func requiredElectives(year: UInt32, semester: SemesterType)async throws  -> [String]  {
@@ -1834,6 +1959,11 @@ public func FfiConverterTypeCourseScheduleApplicationBuilder_lower(_ value: Cour
 public protocol GraduationRequirementsApplicationProtocol: AnyObject, Sendable {
     
     /**
+     * 페이지를 새로고침합니다.
+     */
+    func reload() async throws 
+    
+    /**
      * 졸업사정 결과와 졸업 필요 요건별 충족 여부와 세부 정보를 반환합니다.
      */
     func requirements() async throws  -> GraduationRequirements
@@ -1898,6 +2028,26 @@ open class GraduationRequirementsApplication: GraduationRequirementsApplicationP
 
     
 
+    
+    /**
+     * 페이지를 새로고침합니다.
+     */
+open func reload()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_graduationrequirementsapplication_reload(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_void,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_void,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
     
     /**
      * 졸업사정 결과와 졸업 필요 요건별 충족 여부와 세부 정보를 반환합니다.
@@ -2167,6 +2317,11 @@ public protocol LectureAssessmentApplicationProtocol: AnyObject, Sendable {
      */
     func getSelectedSemester() async throws  -> YearSemester
     
+    /**
+     * 페이지를 새로고침합니다.
+     */
+    func reload() async throws 
+    
 }
 /**
  * [강의평가조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMB2W1010)
@@ -2260,6 +2415,26 @@ open func getSelectedSemester()async throws  -> YearSemester  {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeYearSemester_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
+     * 페이지를 새로고침합니다.
+     */
+open func reload()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_lectureassessmentapplication_reload(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_void,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_void,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_void,
+            liftFunc: { $0 },
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
@@ -2488,6 +2663,11 @@ public protocol PersonalCourseScheduleApplicationProtocol: AnyObject, Sendable {
     func getSelectedSemester() async throws  -> YearSemester
     
     /**
+     * 페이지를 새로고침합니다.
+     */
+    func reload() async throws 
+    
+    /**
      * 해당 학기의 시간표 정보를 가져옵니다.
      */
     func schedule(year: UInt32, semester: SemesterType) async throws  -> PersonalCourseSchedule
@@ -2565,6 +2745,26 @@ open func getSelectedSemester()async throws  -> YearSemester  {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeYearSemester_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
+     * 페이지를 새로고침합니다.
+     */
+open func reload()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_personalcoursescheduleapplication_reload(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_void,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_void,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_void,
+            liftFunc: { $0 },
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
@@ -4437,6 +4637,12 @@ private let initializationResult: InitializationResult = {
     if (uniffi_rusaint_ffi_checksum_method_chapelapplication_information() != 21740) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_rusaint_ffi_checksum_method_chapelapplication_lookup() != 38260) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_chapelapplication_reload() != 11169) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_rusaint_ffi_checksum_method_chapelapplicationbuilder_build() != 32906) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -4452,7 +4658,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_get_selected_semester() != 50223) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_lookup() != 14564) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_recorded_summary() != 3787) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_reload() != 969) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_semesters() != 55958) {
@@ -4491,6 +4703,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_optional_elective_categories() != 63165) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_reload() != 33937) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_required_electives() != 46039) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -4498,6 +4713,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplicationbuilder_build() != 60808) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_graduationrequirementsapplication_reload() != 57908) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_graduationrequirementsapplication_requirements() != 63669) {
@@ -4515,10 +4733,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_rusaint_ffi_checksum_method_lectureassessmentapplication_get_selected_semester() != 2234) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_rusaint_ffi_checksum_method_lectureassessmentapplication_reload() != 59622) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_rusaint_ffi_checksum_method_lectureassessmentapplicationbuilder_build() != 52720) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_personalcoursescheduleapplication_get_selected_semester() != 26180) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_personalcoursescheduleapplication_reload() != 8855) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_personalcoursescheduleapplication_schedule() != 58730) {
