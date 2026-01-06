@@ -10,7 +10,7 @@
 		</data>
 		<key>ios-arm64/Headers/RusaintFFI.h</key>
 		<data>
-		PXe+Hx6uISj1OOdDdDdWK0VbL/o=
+		VU9EHxzhAbM3TLrFD9D0EV+DoBg=
 		</data>
 		<key>ios-arm64/Headers/module.modulemap</key>
 		<data>
@@ -18,7 +18,7 @@
 		</data>
 		<key>ios-arm64/librusaint_ffi.a</key>
 		<data>
-		1W/1wYaq/aX7F2KXpe9TvUwO/uE=
+		MD1UJ3G2drhfXD4zonR3TacK23o=
 		</data>
 		<key>ios-arm64_x86_64-simulator/Headers/RusaintBaseFFI.h</key>
 		<data>
@@ -26,7 +26,7 @@
 		</data>
 		<key>ios-arm64_x86_64-simulator/Headers/RusaintFFI.h</key>
 		<data>
-		PXe+Hx6uISj1OOdDdDdWK0VbL/o=
+		VU9EHxzhAbM3TLrFD9D0EV+DoBg=
 		</data>
 		<key>ios-arm64_x86_64-simulator/Headers/module.modulemap</key>
 		<data>
@@ -34,7 +34,7 @@
 		</data>
 		<key>ios-arm64_x86_64-simulator/librusaint_ffi.a</key>
 		<data>
-		17ZnfA4aXuuKEvNzWiFsEbUX/vc=
+		OtCKl5ULH36XbkBoQoUg0QmzhOo=
 		</data>
 	</dict>
 	<key>files2</key>
@@ -54,11 +54,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			PXe+Hx6uISj1OOdDdDdWK0VbL/o=
+			VU9EHxzhAbM3TLrFD9D0EV+DoBg=
 			</data>
 			<key>hash2</key>
 			<data>
-			4+9fe+PHZw4+zlwZvjb2a1zEkVhFjcaFga8rPtr9Xx4=
+			4kJ3xRCsJgrK5XIbN9mMYvHPtpgddfMSQBeUqlifyYM=
 			</data>
 		</dict>
 		<key>ios-arm64/Headers/module.modulemap</key>
@@ -76,11 +76,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			1W/1wYaq/aX7F2KXpe9TvUwO/uE=
+			MD1UJ3G2drhfXD4zonR3TacK23o=
 			</data>
 			<key>hash2</key>
 			<data>
-			Tn3nInHbOe99OcveOrlE8xPdLHnAT8U/9Be4G/d29hQ=
+			VNz/XY62KDKuIE5garZAbeIayKJfb9i2r6VAlMmkGL0=
 			</data>
 		</dict>
 		<key>ios-arm64_x86_64-simulator/Headers/RusaintBaseFFI.h</key>
@@ -98,11 +98,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			PXe+Hx6uISj1OOdDdDdWK0VbL/o=
+			VU9EHxzhAbM3TLrFD9D0EV+DoBg=
 			</data>
 			<key>hash2</key>
 			<data>
-			4+9fe+PHZw4+zlwZvjb2a1zEkVhFjcaFga8rPtr9Xx4=
+			4kJ3xRCsJgrK5XIbN9mMYvHPtpgddfMSQBeUqlifyYM=
 			</data>
 		</dict>
 		<key>ios-arm64_x86_64-simulator/Headers/module.modulemap</key>
@@ -120,11 +120,11 @@
 		<dict>
 			<key>hash</key>
 			<data>
-			17ZnfA4aXuuKEvNzWiFsEbUX/vc=
+			OtCKl5ULH36XbkBoQoUg0QmzhOo=
 			</data>
 			<key>hash2</key>
 			<data>
-			W+Qjofy+rxJOVliMuMIixG0SPOKORedHMZzB+tss73M=
+			XBBwh7o/3GvS2rVgZG5NI/pWQw4ugsFZEO/rKN1+3XY=
 			</data>
 		</dict>
 	</dict>

@@ -2567,6 +2567,287 @@ public func FfiConverterTypePersonalCourseSchedule_lower(_ value: PersonalCourse
 
 
 /**
+ * 수강신청한 과목 정보
+ */
+public struct RegisteredLecture {
+    /**
+     * 계획
+     */
+    public let syllabus: String?
+    /**
+     * 이수구분(주전공)
+     */
+    public let category: String
+    /**
+     * 이수구분(다전공)
+     */
+    public let subCategory: String?
+    /**
+     * 공학인증
+     */
+    public let abeekInfo: String?
+    /**
+     * 교과영역
+     */
+    public let field: String?
+    /**
+     * 과목번호
+     */
+    public let code: String
+    /**
+     * 과목명
+     */
+    public let name: String
+    /**
+     * 분반
+     */
+    public let division: String?
+    /**
+     * 교수명
+     */
+    public let professor: String
+    /**
+     * 개설학과
+     */
+    public let department: String
+    /**
+     * 시간/학점(설계)
+     */
+    public let timePoints: String
+    /**
+     * 수강인원
+     */
+    public let personeel: String
+    /**
+     * 여석
+     */
+    public let remainingSeats: String
+    /**
+     * 강의시간(강의실)
+     */
+    public let scheduleRoom: String
+    /**
+     * 수강대상
+     */
+    public let target: String
+    /**
+     * 비고
+     */
+    public let remarks: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * 계획
+         */syllabus: String?, 
+        /**
+         * 이수구분(주전공)
+         */category: String, 
+        /**
+         * 이수구분(다전공)
+         */subCategory: String?, 
+        /**
+         * 공학인증
+         */abeekInfo: String?, 
+        /**
+         * 교과영역
+         */field: String?, 
+        /**
+         * 과목번호
+         */code: String, 
+        /**
+         * 과목명
+         */name: String, 
+        /**
+         * 분반
+         */division: String?, 
+        /**
+         * 교수명
+         */professor: String, 
+        /**
+         * 개설학과
+         */department: String, 
+        /**
+         * 시간/학점(설계)
+         */timePoints: String, 
+        /**
+         * 수강인원
+         */personeel: String, 
+        /**
+         * 여석
+         */remainingSeats: String, 
+        /**
+         * 강의시간(강의실)
+         */scheduleRoom: String, 
+        /**
+         * 수강대상
+         */target: String, 
+        /**
+         * 비고
+         */remarks: String) {
+        self.syllabus = syllabus
+        self.category = category
+        self.subCategory = subCategory
+        self.abeekInfo = abeekInfo
+        self.field = field
+        self.code = code
+        self.name = name
+        self.division = division
+        self.professor = professor
+        self.department = department
+        self.timePoints = timePoints
+        self.personeel = personeel
+        self.remainingSeats = remainingSeats
+        self.scheduleRoom = scheduleRoom
+        self.target = target
+        self.remarks = remarks
+    }
+}
+
+#if compiler(>=6)
+extension RegisteredLecture: Sendable {}
+#endif
+
+
+extension RegisteredLecture: Equatable, Hashable {
+    public static func ==(lhs: RegisteredLecture, rhs: RegisteredLecture) -> Bool {
+        if lhs.syllabus != rhs.syllabus {
+            return false
+        }
+        if lhs.category != rhs.category {
+            return false
+        }
+        if lhs.subCategory != rhs.subCategory {
+            return false
+        }
+        if lhs.abeekInfo != rhs.abeekInfo {
+            return false
+        }
+        if lhs.field != rhs.field {
+            return false
+        }
+        if lhs.code != rhs.code {
+            return false
+        }
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.division != rhs.division {
+            return false
+        }
+        if lhs.professor != rhs.professor {
+            return false
+        }
+        if lhs.department != rhs.department {
+            return false
+        }
+        if lhs.timePoints != rhs.timePoints {
+            return false
+        }
+        if lhs.personeel != rhs.personeel {
+            return false
+        }
+        if lhs.remainingSeats != rhs.remainingSeats {
+            return false
+        }
+        if lhs.scheduleRoom != rhs.scheduleRoom {
+            return false
+        }
+        if lhs.target != rhs.target {
+            return false
+        }
+        if lhs.remarks != rhs.remarks {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(syllabus)
+        hasher.combine(category)
+        hasher.combine(subCategory)
+        hasher.combine(abeekInfo)
+        hasher.combine(field)
+        hasher.combine(code)
+        hasher.combine(name)
+        hasher.combine(division)
+        hasher.combine(professor)
+        hasher.combine(department)
+        hasher.combine(timePoints)
+        hasher.combine(personeel)
+        hasher.combine(remainingSeats)
+        hasher.combine(scheduleRoom)
+        hasher.combine(target)
+        hasher.combine(remarks)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeRegisteredLecture: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> RegisteredLecture {
+        return
+            try RegisteredLecture(
+                syllabus: FfiConverterOptionString.read(from: &buf), 
+                category: FfiConverterString.read(from: &buf), 
+                subCategory: FfiConverterOptionString.read(from: &buf), 
+                abeekInfo: FfiConverterOptionString.read(from: &buf), 
+                field: FfiConverterOptionString.read(from: &buf), 
+                code: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                division: FfiConverterOptionString.read(from: &buf), 
+                professor: FfiConverterString.read(from: &buf), 
+                department: FfiConverterString.read(from: &buf), 
+                timePoints: FfiConverterString.read(from: &buf), 
+                personeel: FfiConverterString.read(from: &buf), 
+                remainingSeats: FfiConverterString.read(from: &buf), 
+                scheduleRoom: FfiConverterString.read(from: &buf), 
+                target: FfiConverterString.read(from: &buf), 
+                remarks: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: RegisteredLecture, into buf: inout [UInt8]) {
+        FfiConverterOptionString.write(value.syllabus, into: &buf)
+        FfiConverterString.write(value.category, into: &buf)
+        FfiConverterOptionString.write(value.subCategory, into: &buf)
+        FfiConverterOptionString.write(value.abeekInfo, into: &buf)
+        FfiConverterOptionString.write(value.field, into: &buf)
+        FfiConverterString.write(value.code, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.division, into: &buf)
+        FfiConverterString.write(value.professor, into: &buf)
+        FfiConverterString.write(value.department, into: &buf)
+        FfiConverterString.write(value.timePoints, into: &buf)
+        FfiConverterString.write(value.personeel, into: &buf)
+        FfiConverterString.write(value.remainingSeats, into: &buf)
+        FfiConverterString.write(value.scheduleRoom, into: &buf)
+        FfiConverterString.write(value.target, into: &buf)
+        FfiConverterString.write(value.remarks, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRegisteredLecture_lift(_ buf: RustBuffer) throws -> RegisteredLecture {
+    return try FfiConverterTypeRegisteredLecture.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeRegisteredLecture_lower(_ value: RegisteredLecture) -> RustBuffer {
+    return FfiConverterTypeRegisteredLecture.lower(value)
+}
+
+
+/**
  * 수혜받은 장학금 정보
  */
 public struct Scholarship {

@@ -1354,6 +1354,356 @@ public func FfiConverterTypeCourseGradesApplicationBuilder_lower(_ value: Course
 
 
 /**
+ * [수강신청 내역 조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW2110)
+ */
+public protocol CourseRegistrationStatusApplicationProtocol: AnyObject, Sendable {
+    
+    /**
+     * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
+     * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
+     */
+    func getSelectedSemester() async throws  -> YearSemester
+    
+    /**
+     * 개인이 수강신청한 내역을 학기별로 찾습니다.
+     */
+    func lectures(year: UInt32, semester: SemesterType) async throws  -> [RegisteredLecture]
+    
+    /**
+     * 페이지를 새로고침합니다.
+     */
+    func reload() async throws 
+    
+}
+/**
+ * [수강신청 내역 조회](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW2110)
+ */
+open class CourseRegistrationStatusApplication: CourseRegistrationStatusApplicationProtocol, @unchecked Sendable {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_courseregistrationstatusapplication(self.pointer, $0) }
+    }
+    // No primary constructor declared for this class.
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_rusaint_ffi_fn_free_courseregistrationstatusapplication(pointer, $0) }
+    }
+
+    
+
+    
+    /**
+     * 현재 페이지에 선택된 년도와 학기를 가져옵니다. 최초 로드 시 현재 학기를 가져올 가능성이 있습니다.
+     * 하지만 이 애플리케이션의 다른 함수를 호출하여 한번 정보를 가져왔다면 마지막으로 가져온 정보의 학기가 반환되므로 주의하여야 하며, 신뢰할 수 있는 현재 학기의 원천으로 사용되어서는 안됩니다.
+     */
+open func getSelectedSemester()async throws  -> YearSemester  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_courseregistrationstatusapplication_get_selected_semester(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeYearSemester_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
+     * 개인이 수강신청한 내역을 학기별로 찾습니다.
+     */
+open func lectures(year: UInt32, semester: SemesterType)async throws  -> [RegisteredLecture]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_courseregistrationstatusapplication_lectures(
+                    self.uniffiClonePointer(),
+                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeRegisteredLecture.lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
+     * 페이지를 새로고침합니다.
+     */
+open func reload()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_courseregistrationstatusapplication_reload(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_void,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_void,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCourseRegistrationStatusApplication: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = CourseRegistrationStatusApplication
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseRegistrationStatusApplication {
+        return CourseRegistrationStatusApplication(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: CourseRegistrationStatusApplication) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CourseRegistrationStatusApplication {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: CourseRegistrationStatusApplication, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCourseRegistrationStatusApplication_lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseRegistrationStatusApplication {
+    return try FfiConverterTypeCourseRegistrationStatusApplication.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCourseRegistrationStatusApplication_lower(_ value: CourseRegistrationStatusApplication) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeCourseRegistrationStatusApplication.lower(value)
+}
+
+
+
+
+
+
+/**
+ * [`CourseRegistrationStatusApplication`] 생성을 위한 빌더
+ */
+public protocol CourseRegistrationStatusApplicationBuilderProtocol: AnyObject, Sendable {
+    
+    /**
+     * 세션과 함께 [`CourseRegistrationStatusApplication`]을 만듭니다.
+     */
+    func build(session: USaintSession) async throws  -> CourseRegistrationStatusApplication
+    
+}
+/**
+ * [`CourseRegistrationStatusApplication`] 생성을 위한 빌더
+ */
+open class CourseRegistrationStatusApplicationBuilder: CourseRegistrationStatusApplicationBuilderProtocol, @unchecked Sendable {
+    fileprivate let pointer: UnsafeMutableRawPointer!
+
+    /// Used to instantiate a [FFIObject] without an actual pointer, for fakes in tests, mostly.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public struct NoPointer {
+        public init() {}
+    }
+
+    // TODO: We'd like this to be `private` but for Swifty reasons,
+    // we can't implement `FfiConverter` without making this `required` and we can't
+    // make it `required` without making it `public`.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    required public init(unsafeFromRawPointer pointer: UnsafeMutableRawPointer) {
+        self.pointer = pointer
+    }
+
+    // This constructor can be used to instantiate a fake object.
+    // - Parameter noPointer: Placeholder value so we can have a constructor separate from the default empty one that may be implemented for classes extending [FFIObject].
+    //
+    // - Warning:
+    //     Any object instantiated with this constructor cannot be passed to an actual Rust-backed object. Since there isn't a backing [Pointer] the FFI lower functions will crash.
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public init(noPointer: NoPointer) {
+        self.pointer = nil
+    }
+
+#if swift(>=5.8)
+    @_documentation(visibility: private)
+#endif
+    public func uniffiClonePointer() -> UnsafeMutableRawPointer {
+        return try! rustCall { uniffi_rusaint_ffi_fn_clone_courseregistrationstatusapplicationbuilder(self.pointer, $0) }
+    }
+    /**
+     * 새로운 [`CourseRegistrationStatusApplicationBuilder`]를 만듭니다.
+     */
+public convenience init() {
+    let pointer =
+        try! rustCall() {
+    uniffi_rusaint_ffi_fn_constructor_courseregistrationstatusapplicationbuilder_new($0
+    )
+}
+    self.init(unsafeFromRawPointer: pointer)
+}
+
+    deinit {
+        guard let pointer = pointer else {
+            return
+        }
+
+        try! rustCall { uniffi_rusaint_ffi_fn_free_courseregistrationstatusapplicationbuilder(pointer, $0) }
+    }
+
+    
+
+    
+    /**
+     * 세션과 함께 [`CourseRegistrationStatusApplication`]을 만듭니다.
+     */
+open func build(session: USaintSession)async throws  -> CourseRegistrationStatusApplication  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_courseregistrationstatusapplicationbuilder_build(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeUSaintSession_lower(session)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_pointer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_pointer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_pointer,
+            liftFunc: FfiConverterTypeCourseRegistrationStatusApplication_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeCourseRegistrationStatusApplicationBuilder: FfiConverter {
+
+    typealias FfiType = UnsafeMutableRawPointer
+    typealias SwiftType = CourseRegistrationStatusApplicationBuilder
+
+    public static func lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseRegistrationStatusApplicationBuilder {
+        return CourseRegistrationStatusApplicationBuilder(unsafeFromRawPointer: pointer)
+    }
+
+    public static func lower(_ value: CourseRegistrationStatusApplicationBuilder) -> UnsafeMutableRawPointer {
+        return value.uniffiClonePointer()
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> CourseRegistrationStatusApplicationBuilder {
+        let v: UInt64 = try readInt(&buf)
+        // The Rust code won't compile if a pointer won't fit in a UInt64.
+        // We have to go via `UInt` because that's the thing that's the size of a pointer.
+        let ptr = UnsafeMutableRawPointer(bitPattern: UInt(truncatingIfNeeded: v))
+        if (ptr == nil) {
+            throw UniffiInternalError.unexpectedNullPointer
+        }
+        return try lift(ptr!)
+    }
+
+    public static func write(_ value: CourseRegistrationStatusApplicationBuilder, into buf: inout [UInt8]) {
+        // This fiddling is because `Int` is the thing that's the same size as a pointer.
+        // The Rust code won't compile if a pointer won't fit in a `UInt64`.
+        writeInt(&buf, UInt64(bitPattern: Int64(Int(bitPattern: lower(value)))))
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCourseRegistrationStatusApplicationBuilder_lift(_ pointer: UnsafeMutableRawPointer) throws -> CourseRegistrationStatusApplicationBuilder {
+    return try FfiConverterTypeCourseRegistrationStatusApplicationBuilder.lift(pointer)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeCourseRegistrationStatusApplicationBuilder_lower(_ value: CourseRegistrationStatusApplicationBuilder) -> UnsafeMutableRawPointer {
+    return FfiConverterTypeCourseRegistrationStatusApplicationBuilder.lower(value)
+}
+
+
+
+
+
+
+/**
  * [강의시간표](https://ecc.ssu.ac.kr/sap/bc/webdynpro/SAP/ZCMW2100)
  */
 public protocol CourseScheduleApplicationProtocol: AnyObject, Sendable {
@@ -3007,6 +3357,11 @@ public func FfiConverterTypePersonalCourseScheduleApplicationBuilder_lower(_ val
 public protocol ScholarshipsApplicationProtocol: AnyObject, Sendable {
     
     /**
+     * 페이지를 새로고침합니다.
+     */
+    func reload() async throws 
+    
+    /**
      * 장학금 수혜 내역을 가져옵니다.
      */
     func scholarships() async throws  -> [Scholarship]
@@ -3066,6 +3421,26 @@ open class ScholarshipsApplication: ScholarshipsApplicationProtocol, @unchecked 
 
     
 
+    
+    /**
+     * 페이지를 새로고침합니다.
+     */
+open func reload()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_scholarshipsapplication_reload(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_void,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_void,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_void,
+            liftFunc: { $0 },
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
     
     /**
      * 장학금 수혜 내역을 가져옵니다.
@@ -3340,6 +3715,11 @@ public protocol StudentInformationApplicationProtocol: AnyObject, Sendable {
     func religion() async throws  -> StudentReligion
     
     /**
+     * 페이지를 새로고침합니다.
+     */
+    func reload() async throws 
+    
+    /**
      * 학생의 연구비 입금 계좌를 반환합니다.
      */
     func researchBankAccount() async throws  -> StudentResearchBankAccount
@@ -3546,6 +3926,26 @@ open func religion()async throws  -> StudentReligion  {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeStudentReligion_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
+     * 페이지를 새로고침합니다.
+     */
+open func reload()async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_studentinformationapplication_reload(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_void,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_void,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_void,
+            liftFunc: { $0 },
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
@@ -4497,6 +4897,31 @@ fileprivate struct FfiConverterSequenceTypeLectureAssessmentResult: FfiConverter
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeRegisteredLecture: FfiConverterRustBuffer {
+    typealias SwiftType = [RegisteredLecture]
+
+    public static func write(_ value: [RegisteredLecture], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeRegisteredLecture.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [RegisteredLecture] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [RegisteredLecture]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeRegisteredLecture.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeScholarship: FfiConverterRustBuffer {
     typealias SwiftType = [Scholarship]
 
@@ -4673,6 +5098,18 @@ private let initializationResult: InitializationResult = {
     if (uniffi_rusaint_ffi_checksum_method_coursegradesapplicationbuilder_build() != 50139) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_rusaint_ffi_checksum_method_courseregistrationstatusapplication_get_selected_semester() != 28001) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_courseregistrationstatusapplication_lectures() != 297) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_courseregistrationstatusapplication_reload() != 6563) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_courseregistrationstatusapplicationbuilder_build() != 33070) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_chapel_categories() != 21428) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -4751,6 +5188,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_rusaint_ffi_checksum_method_personalcoursescheduleapplicationbuilder_build() != 42578) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_rusaint_ffi_checksum_method_scholarshipsapplication_reload() != 42434) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_rusaint_ffi_checksum_method_scholarshipsapplication_scholarships() != 28486) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -4776,6 +5216,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_studentinformationapplication_religion() != 49903) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_studentinformationapplication_reload() != 12310) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_studentinformationapplication_research_bank_account() != 7706) {
@@ -4809,6 +5252,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_constructor_coursegradesapplicationbuilder_new() != 45366) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_constructor_courseregistrationstatusapplicationbuilder_new() != 53154) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_constructor_coursescheduleapplicationbuilder_new() != 52419) {
