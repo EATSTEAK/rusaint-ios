@@ -854,6 +854,105 @@ public func FfiConverterTypeLectureCategoryBuilder_lower(_ value: LectureCategor
 
 
 /**
+ * 대체 과목 정보
+ */
+public struct AlternativeLecture {
+    /**
+     * 구분
+     */
+    public let kind: String
+    /**
+     * 과목번호
+     */
+    public let code: String
+    /**
+     * 과목명
+     */
+    public let name: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * 구분
+         */kind: String, 
+        /**
+         * 과목번호
+         */code: String, 
+        /**
+         * 과목명
+         */name: String) {
+        self.kind = kind
+        self.code = code
+        self.name = name
+    }
+}
+
+#if compiler(>=6)
+extension AlternativeLecture: Sendable {}
+#endif
+
+
+extension AlternativeLecture: Equatable, Hashable {
+    public static func ==(lhs: AlternativeLecture, rhs: AlternativeLecture) -> Bool {
+        if lhs.kind != rhs.kind {
+            return false
+        }
+        if lhs.code != rhs.code {
+            return false
+        }
+        if lhs.name != rhs.name {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(kind)
+        hasher.combine(code)
+        hasher.combine(name)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeAlternativeLecture: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> AlternativeLecture {
+        return
+            try AlternativeLecture(
+                kind: FfiConverterString.read(from: &buf), 
+                code: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: AlternativeLecture, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.kind, into: &buf)
+        FfiConverterString.write(value.code, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAlternativeLecture_lift(_ buf: RustBuffer) throws -> AlternativeLecture {
+    return try FfiConverterTypeAlternativeLecture.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeAlternativeLecture_lower(_ value: AlternativeLecture) -> RustBuffer {
+    return FfiConverterTypeAlternativeLecture.lower(value)
+}
+
+
+/**
  * 채플 결석신청 정보
  */
 public struct ChapelAbsenceRequest {
@@ -1408,6 +1507,189 @@ public func FfiConverterTypeClassGrade_lower(_ value: ClassGrade) -> RustBuffer 
 
 
 /**
+ * 이수구분별 개별 과목 성적
+ */
+public struct ClassGradeItem {
+    /**
+     * 이수구분 (e.g., "교양필수", "전공선택")
+     */
+    public let classification: String
+    /**
+     * 학년도
+     */
+    public let year: String
+    /**
+     * 학기
+     */
+    public let semester: String
+    /**
+     * 과목코드
+     */
+    public let courseCode: String
+    /**
+     * 과목명
+     */
+    public let courseName: String
+    /**
+     * 학점
+     */
+    public let credits: String
+    /**
+     * 성적 점수 (e.g., "100")
+     */
+    public let score: String
+    /**
+     * 성적 등급 (e.g., "A+")
+     */
+    public let grade: String
+    /**
+     * 비고
+     */
+    public let note: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * 이수구분 (e.g., "교양필수", "전공선택")
+         */classification: String, 
+        /**
+         * 학년도
+         */year: String, 
+        /**
+         * 학기
+         */semester: String, 
+        /**
+         * 과목코드
+         */courseCode: String, 
+        /**
+         * 과목명
+         */courseName: String, 
+        /**
+         * 학점
+         */credits: String, 
+        /**
+         * 성적 점수 (e.g., "100")
+         */score: String, 
+        /**
+         * 성적 등급 (e.g., "A+")
+         */grade: String, 
+        /**
+         * 비고
+         */note: String) {
+        self.classification = classification
+        self.year = year
+        self.semester = semester
+        self.courseCode = courseCode
+        self.courseName = courseName
+        self.credits = credits
+        self.score = score
+        self.grade = grade
+        self.note = note
+    }
+}
+
+#if compiler(>=6)
+extension ClassGradeItem: Sendable {}
+#endif
+
+
+extension ClassGradeItem: Equatable, Hashable {
+    public static func ==(lhs: ClassGradeItem, rhs: ClassGradeItem) -> Bool {
+        if lhs.classification != rhs.classification {
+            return false
+        }
+        if lhs.year != rhs.year {
+            return false
+        }
+        if lhs.semester != rhs.semester {
+            return false
+        }
+        if lhs.courseCode != rhs.courseCode {
+            return false
+        }
+        if lhs.courseName != rhs.courseName {
+            return false
+        }
+        if lhs.credits != rhs.credits {
+            return false
+        }
+        if lhs.score != rhs.score {
+            return false
+        }
+        if lhs.grade != rhs.grade {
+            return false
+        }
+        if lhs.note != rhs.note {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(classification)
+        hasher.combine(year)
+        hasher.combine(semester)
+        hasher.combine(courseCode)
+        hasher.combine(courseName)
+        hasher.combine(credits)
+        hasher.combine(score)
+        hasher.combine(grade)
+        hasher.combine(note)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeClassGradeItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ClassGradeItem {
+        return
+            try ClassGradeItem(
+                classification: FfiConverterString.read(from: &buf), 
+                year: FfiConverterString.read(from: &buf), 
+                semester: FfiConverterString.read(from: &buf), 
+                courseCode: FfiConverterString.read(from: &buf), 
+                courseName: FfiConverterString.read(from: &buf), 
+                credits: FfiConverterString.read(from: &buf), 
+                score: FfiConverterString.read(from: &buf), 
+                grade: FfiConverterString.read(from: &buf), 
+                note: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: ClassGradeItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.classification, into: &buf)
+        FfiConverterString.write(value.year, into: &buf)
+        FfiConverterString.write(value.semester, into: &buf)
+        FfiConverterString.write(value.courseCode, into: &buf)
+        FfiConverterString.write(value.courseName, into: &buf)
+        FfiConverterString.write(value.credits, into: &buf)
+        FfiConverterString.write(value.score, into: &buf)
+        FfiConverterString.write(value.grade, into: &buf)
+        FfiConverterString.write(value.note, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClassGradeItem_lift(_ buf: RustBuffer) throws -> ClassGradeItem {
+    return try FfiConverterTypeClassGradeItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeClassGradeItem_lower(_ value: ClassGradeItem) -> RustBuffer {
+    return FfiConverterTypeClassGradeItem.lower(value)
+}
+
+
+/**
  * 강의의 시간표 정보입니다.
  */
 public struct CourseScheduleInformation {
@@ -1755,6 +2037,175 @@ public func FfiConverterTypeGradeSummary_lift(_ buf: RustBuffer) throws -> Grade
 #endif
 public func FfiConverterTypeGradeSummary_lower(_ value: GradeSummary) -> RustBuffer {
     return FfiConverterTypeGradeSummary.lower(value)
+}
+
+
+/**
+ * 이수구분별 성적 조회 결과
+ */
+public struct GradesByClassification {
+    /**
+     * 학번
+     */
+    public let studentNumber: String
+    /**
+     * 이름
+     */
+    public let studentName: String
+    /**
+     * 학년
+     */
+    public let yearLevel: String
+    /**
+     * 대학
+     */
+    public let college: String
+    /**
+     * 학부(과)
+     */
+    public let department: String
+    /**
+     * 전공
+     */
+    public let major: String
+    /**
+     * 조회일
+     */
+    public let auditDate: String
+    /**
+     * 이수구분별 과목 성적 목록
+     */
+    public let grades: [ClassGradeItem]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * 학번
+         */studentNumber: String, 
+        /**
+         * 이름
+         */studentName: String, 
+        /**
+         * 학년
+         */yearLevel: String, 
+        /**
+         * 대학
+         */college: String, 
+        /**
+         * 학부(과)
+         */department: String, 
+        /**
+         * 전공
+         */major: String, 
+        /**
+         * 조회일
+         */auditDate: String, 
+        /**
+         * 이수구분별 과목 성적 목록
+         */grades: [ClassGradeItem]) {
+        self.studentNumber = studentNumber
+        self.studentName = studentName
+        self.yearLevel = yearLevel
+        self.college = college
+        self.department = department
+        self.major = major
+        self.auditDate = auditDate
+        self.grades = grades
+    }
+}
+
+#if compiler(>=6)
+extension GradesByClassification: Sendable {}
+#endif
+
+
+extension GradesByClassification: Equatable, Hashable {
+    public static func ==(lhs: GradesByClassification, rhs: GradesByClassification) -> Bool {
+        if lhs.studentNumber != rhs.studentNumber {
+            return false
+        }
+        if lhs.studentName != rhs.studentName {
+            return false
+        }
+        if lhs.yearLevel != rhs.yearLevel {
+            return false
+        }
+        if lhs.college != rhs.college {
+            return false
+        }
+        if lhs.department != rhs.department {
+            return false
+        }
+        if lhs.major != rhs.major {
+            return false
+        }
+        if lhs.auditDate != rhs.auditDate {
+            return false
+        }
+        if lhs.grades != rhs.grades {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(studentNumber)
+        hasher.combine(studentName)
+        hasher.combine(yearLevel)
+        hasher.combine(college)
+        hasher.combine(department)
+        hasher.combine(major)
+        hasher.combine(auditDate)
+        hasher.combine(grades)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeGradesByClassification: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> GradesByClassification {
+        return
+            try GradesByClassification(
+                studentNumber: FfiConverterString.read(from: &buf), 
+                studentName: FfiConverterString.read(from: &buf), 
+                yearLevel: FfiConverterString.read(from: &buf), 
+                college: FfiConverterString.read(from: &buf), 
+                department: FfiConverterString.read(from: &buf), 
+                major: FfiConverterString.read(from: &buf), 
+                auditDate: FfiConverterString.read(from: &buf), 
+                grades: FfiConverterSequenceTypeClassGradeItem.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: GradesByClassification, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.studentNumber, into: &buf)
+        FfiConverterString.write(value.studentName, into: &buf)
+        FfiConverterString.write(value.yearLevel, into: &buf)
+        FfiConverterString.write(value.college, into: &buf)
+        FfiConverterString.write(value.department, into: &buf)
+        FfiConverterString.write(value.major, into: &buf)
+        FfiConverterString.write(value.auditDate, into: &buf)
+        FfiConverterSequenceTypeClassGradeItem.write(value.grades, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeGradesByClassification_lift(_ buf: RustBuffer) throws -> GradesByClassification {
+    return try FfiConverterTypeGradesByClassification.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeGradesByClassification_lower(_ value: GradesByClassification) -> RustBuffer {
+    return FfiConverterTypeGradesByClassification.lower(value)
 }
 
 
@@ -2502,6 +2953,555 @@ public func FfiConverterTypeLectureAssessmentResult_lower(_ value: LectureAssess
 
 
 /**
+ * 강의 변경 이력
+ */
+public struct LectureChangeHistory {
+    /**
+     * 시작일자
+     */
+    public let startDate: String
+    /**
+     * 종료일자
+     */
+    public let endDate: String
+    /**
+     * 과목명
+     */
+    public let name: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * 시작일자
+         */startDate: String, 
+        /**
+         * 종료일자
+         */endDate: String, 
+        /**
+         * 과목명
+         */name: String) {
+        self.startDate = startDate
+        self.endDate = endDate
+        self.name = name
+    }
+}
+
+#if compiler(>=6)
+extension LectureChangeHistory: Sendable {}
+#endif
+
+
+extension LectureChangeHistory: Equatable, Hashable {
+    public static func ==(lhs: LectureChangeHistory, rhs: LectureChangeHistory) -> Bool {
+        if lhs.startDate != rhs.startDate {
+            return false
+        }
+        if lhs.endDate != rhs.endDate {
+            return false
+        }
+        if lhs.name != rhs.name {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(startDate)
+        hasher.combine(endDate)
+        hasher.combine(name)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLectureChangeHistory: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LectureChangeHistory {
+        return
+            try LectureChangeHistory(
+                startDate: FfiConverterString.read(from: &buf), 
+                endDate: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LectureChangeHistory, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.startDate, into: &buf)
+        FfiConverterString.write(value.endDate, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLectureChangeHistory_lift(_ buf: RustBuffer) throws -> LectureChangeHistory {
+    return try FfiConverterTypeLectureChangeHistory.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLectureChangeHistory_lower(_ value: LectureChangeHistory) -> RustBuffer {
+    return FfiConverterTypeLectureChangeHistory.lower(value)
+}
+
+
+/**
+ * 강의 상세 정보
+ */
+public struct LectureDetail {
+    /**
+     * 강의 변경 이력 목록
+     */
+    public let changesHistory: [LectureChangeHistory]
+    /**
+     * 대체 과목 목록
+     */
+    public let alternativeLectures: [AlternativeLecture]
+    /**
+     * 과목 분류 목록
+     */
+    public let categories: [String]
+    /**
+     * 선수 과목 목록
+     */
+    public let prerequisites: [PrerequisiteLecture]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * 강의 변경 이력 목록
+         */changesHistory: [LectureChangeHistory], 
+        /**
+         * 대체 과목 목록
+         */alternativeLectures: [AlternativeLecture], 
+        /**
+         * 과목 분류 목록
+         */categories: [String], 
+        /**
+         * 선수 과목 목록
+         */prerequisites: [PrerequisiteLecture]) {
+        self.changesHistory = changesHistory
+        self.alternativeLectures = alternativeLectures
+        self.categories = categories
+        self.prerequisites = prerequisites
+    }
+}
+
+#if compiler(>=6)
+extension LectureDetail: Sendable {}
+#endif
+
+
+extension LectureDetail: Equatable, Hashable {
+    public static func ==(lhs: LectureDetail, rhs: LectureDetail) -> Bool {
+        if lhs.changesHistory != rhs.changesHistory {
+            return false
+        }
+        if lhs.alternativeLectures != rhs.alternativeLectures {
+            return false
+        }
+        if lhs.categories != rhs.categories {
+            return false
+        }
+        if lhs.prerequisites != rhs.prerequisites {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(changesHistory)
+        hasher.combine(alternativeLectures)
+        hasher.combine(categories)
+        hasher.combine(prerequisites)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLectureDetail: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LectureDetail {
+        return
+            try LectureDetail(
+                changesHistory: FfiConverterSequenceTypeLectureChangeHistory.read(from: &buf), 
+                alternativeLectures: FfiConverterSequenceTypeAlternativeLecture.read(from: &buf), 
+                categories: FfiConverterSequenceString.read(from: &buf), 
+                prerequisites: FfiConverterSequenceTypePrerequisiteLecture.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LectureDetail, into buf: inout [UInt8]) {
+        FfiConverterSequenceTypeLectureChangeHistory.write(value.changesHistory, into: &buf)
+        FfiConverterSequenceTypeAlternativeLecture.write(value.alternativeLectures, into: &buf)
+        FfiConverterSequenceString.write(value.categories, into: &buf)
+        FfiConverterSequenceTypePrerequisiteLecture.write(value.prerequisites, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLectureDetail_lift(_ buf: RustBuffer) throws -> LectureDetail {
+    return try FfiConverterTypeLectureDetail.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLectureDetail_lower(_ value: LectureDetail) -> RustBuffer {
+    return FfiConverterTypeLectureDetail.lower(value)
+}
+
+
+/**
+ * 강의계획서 - Full lecture syllabus information
+ */
+public struct LectureSyllabus {
+    /**
+     * 교과목명
+     */
+    public let courseName: String
+    /**
+     * 담당교수
+     */
+    public let professor: String
+    /**
+     * 과목코드
+     */
+    public let courseCode: String
+    /**
+     * 학년도
+     */
+    public let year: String
+    /**
+     * 학기
+     */
+    public let semester: String
+    /**
+     * 학점
+     */
+    public let credits: String
+    /**
+     * 강의개요
+     */
+    public let abstractText: String
+    /**
+     * 수업방법
+     */
+    public let teachingMethod: String
+    /**
+     * 주교재
+     */
+    public let mainTextbook: String
+    /**
+     * 부교재
+     */
+    public let subTextbook: String
+    /**
+     * 교수 전화번호
+     */
+    public let professorPhone: String
+    /**
+     * 교수 이메일
+     */
+    public let professorEmail: String
+    /**
+     * 상담시간
+     */
+    public let officeHours: String
+    /**
+     * 수강대상
+     */
+    public let targetStudents: String
+    /**
+     * 이수구분
+     */
+    public let designation: String
+    /**
+     * 결석처리
+     */
+    public let absencePolicy: String
+    /**
+     * 성적평가 항목
+     */
+    public let gradingItems: [SyllabusGradingItem]
+    /**
+     * 학습목표
+     */
+    public let learningObjectives: [String]
+    /**
+     * 주차별 수업계획
+     */
+    public let weeklySchedule: [SyllabusWeeklyPlan]
+    /**
+     * 핵심역량
+     */
+    public let competencies: [SyllabusCompetency]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * 교과목명
+         */courseName: String, 
+        /**
+         * 담당교수
+         */professor: String, 
+        /**
+         * 과목코드
+         */courseCode: String, 
+        /**
+         * 학년도
+         */year: String, 
+        /**
+         * 학기
+         */semester: String, 
+        /**
+         * 학점
+         */credits: String, 
+        /**
+         * 강의개요
+         */abstractText: String, 
+        /**
+         * 수업방법
+         */teachingMethod: String, 
+        /**
+         * 주교재
+         */mainTextbook: String, 
+        /**
+         * 부교재
+         */subTextbook: String, 
+        /**
+         * 교수 전화번호
+         */professorPhone: String, 
+        /**
+         * 교수 이메일
+         */professorEmail: String, 
+        /**
+         * 상담시간
+         */officeHours: String, 
+        /**
+         * 수강대상
+         */targetStudents: String, 
+        /**
+         * 이수구분
+         */designation: String, 
+        /**
+         * 결석처리
+         */absencePolicy: String, 
+        /**
+         * 성적평가 항목
+         */gradingItems: [SyllabusGradingItem], 
+        /**
+         * 학습목표
+         */learningObjectives: [String], 
+        /**
+         * 주차별 수업계획
+         */weeklySchedule: [SyllabusWeeklyPlan], 
+        /**
+         * 핵심역량
+         */competencies: [SyllabusCompetency]) {
+        self.courseName = courseName
+        self.professor = professor
+        self.courseCode = courseCode
+        self.year = year
+        self.semester = semester
+        self.credits = credits
+        self.abstractText = abstractText
+        self.teachingMethod = teachingMethod
+        self.mainTextbook = mainTextbook
+        self.subTextbook = subTextbook
+        self.professorPhone = professorPhone
+        self.professorEmail = professorEmail
+        self.officeHours = officeHours
+        self.targetStudents = targetStudents
+        self.designation = designation
+        self.absencePolicy = absencePolicy
+        self.gradingItems = gradingItems
+        self.learningObjectives = learningObjectives
+        self.weeklySchedule = weeklySchedule
+        self.competencies = competencies
+    }
+}
+
+#if compiler(>=6)
+extension LectureSyllabus: Sendable {}
+#endif
+
+
+extension LectureSyllabus: Equatable, Hashable {
+    public static func ==(lhs: LectureSyllabus, rhs: LectureSyllabus) -> Bool {
+        if lhs.courseName != rhs.courseName {
+            return false
+        }
+        if lhs.professor != rhs.professor {
+            return false
+        }
+        if lhs.courseCode != rhs.courseCode {
+            return false
+        }
+        if lhs.year != rhs.year {
+            return false
+        }
+        if lhs.semester != rhs.semester {
+            return false
+        }
+        if lhs.credits != rhs.credits {
+            return false
+        }
+        if lhs.abstractText != rhs.abstractText {
+            return false
+        }
+        if lhs.teachingMethod != rhs.teachingMethod {
+            return false
+        }
+        if lhs.mainTextbook != rhs.mainTextbook {
+            return false
+        }
+        if lhs.subTextbook != rhs.subTextbook {
+            return false
+        }
+        if lhs.professorPhone != rhs.professorPhone {
+            return false
+        }
+        if lhs.professorEmail != rhs.professorEmail {
+            return false
+        }
+        if lhs.officeHours != rhs.officeHours {
+            return false
+        }
+        if lhs.targetStudents != rhs.targetStudents {
+            return false
+        }
+        if lhs.designation != rhs.designation {
+            return false
+        }
+        if lhs.absencePolicy != rhs.absencePolicy {
+            return false
+        }
+        if lhs.gradingItems != rhs.gradingItems {
+            return false
+        }
+        if lhs.learningObjectives != rhs.learningObjectives {
+            return false
+        }
+        if lhs.weeklySchedule != rhs.weeklySchedule {
+            return false
+        }
+        if lhs.competencies != rhs.competencies {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(courseName)
+        hasher.combine(professor)
+        hasher.combine(courseCode)
+        hasher.combine(year)
+        hasher.combine(semester)
+        hasher.combine(credits)
+        hasher.combine(abstractText)
+        hasher.combine(teachingMethod)
+        hasher.combine(mainTextbook)
+        hasher.combine(subTextbook)
+        hasher.combine(professorPhone)
+        hasher.combine(professorEmail)
+        hasher.combine(officeHours)
+        hasher.combine(targetStudents)
+        hasher.combine(designation)
+        hasher.combine(absencePolicy)
+        hasher.combine(gradingItems)
+        hasher.combine(learningObjectives)
+        hasher.combine(weeklySchedule)
+        hasher.combine(competencies)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeLectureSyllabus: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> LectureSyllabus {
+        return
+            try LectureSyllabus(
+                courseName: FfiConverterString.read(from: &buf), 
+                professor: FfiConverterString.read(from: &buf), 
+                courseCode: FfiConverterString.read(from: &buf), 
+                year: FfiConverterString.read(from: &buf), 
+                semester: FfiConverterString.read(from: &buf), 
+                credits: FfiConverterString.read(from: &buf), 
+                abstractText: FfiConverterString.read(from: &buf), 
+                teachingMethod: FfiConverterString.read(from: &buf), 
+                mainTextbook: FfiConverterString.read(from: &buf), 
+                subTextbook: FfiConverterString.read(from: &buf), 
+                professorPhone: FfiConverterString.read(from: &buf), 
+                professorEmail: FfiConverterString.read(from: &buf), 
+                officeHours: FfiConverterString.read(from: &buf), 
+                targetStudents: FfiConverterString.read(from: &buf), 
+                designation: FfiConverterString.read(from: &buf), 
+                absencePolicy: FfiConverterString.read(from: &buf), 
+                gradingItems: FfiConverterSequenceTypeSyllabusGradingItem.read(from: &buf), 
+                learningObjectives: FfiConverterSequenceString.read(from: &buf), 
+                weeklySchedule: FfiConverterSequenceTypeSyllabusWeeklyPlan.read(from: &buf), 
+                competencies: FfiConverterSequenceTypeSyllabusCompetency.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: LectureSyllabus, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.courseName, into: &buf)
+        FfiConverterString.write(value.professor, into: &buf)
+        FfiConverterString.write(value.courseCode, into: &buf)
+        FfiConverterString.write(value.year, into: &buf)
+        FfiConverterString.write(value.semester, into: &buf)
+        FfiConverterString.write(value.credits, into: &buf)
+        FfiConverterString.write(value.abstractText, into: &buf)
+        FfiConverterString.write(value.teachingMethod, into: &buf)
+        FfiConverterString.write(value.mainTextbook, into: &buf)
+        FfiConverterString.write(value.subTextbook, into: &buf)
+        FfiConverterString.write(value.professorPhone, into: &buf)
+        FfiConverterString.write(value.professorEmail, into: &buf)
+        FfiConverterString.write(value.officeHours, into: &buf)
+        FfiConverterString.write(value.targetStudents, into: &buf)
+        FfiConverterString.write(value.designation, into: &buf)
+        FfiConverterString.write(value.absencePolicy, into: &buf)
+        FfiConverterSequenceTypeSyllabusGradingItem.write(value.gradingItems, into: &buf)
+        FfiConverterSequenceString.write(value.learningObjectives, into: &buf)
+        FfiConverterSequenceTypeSyllabusWeeklyPlan.write(value.weeklySchedule, into: &buf)
+        FfiConverterSequenceTypeSyllabusCompetency.write(value.competencies, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLectureSyllabus_lift(_ buf: RustBuffer) throws -> LectureSyllabus {
+    return try FfiConverterTypeLectureSyllabus.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeLectureSyllabus_lower(_ value: LectureSyllabus) -> RustBuffer {
+    return FfiConverterTypeLectureSyllabus.lower(value)
+}
+
+
+/**
  * 개인의 수업 시간표 정보를 조회합니다.
  */
 public struct PersonalCourseSchedule {
@@ -2563,6 +3563,91 @@ public func FfiConverterTypePersonalCourseSchedule_lift(_ buf: RustBuffer) throw
 #endif
 public func FfiConverterTypePersonalCourseSchedule_lower(_ value: PersonalCourseSchedule) -> RustBuffer {
     return FfiConverterTypePersonalCourseSchedule.lower(value)
+}
+
+
+/**
+ * 선수 과목 정보
+ */
+public struct PrerequisiteLecture {
+    /**
+     * 과목번호
+     */
+    public let code: String
+    /**
+     * 과목명
+     */
+    public let name: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * 과목번호
+         */code: String, 
+        /**
+         * 과목명
+         */name: String) {
+        self.code = code
+        self.name = name
+    }
+}
+
+#if compiler(>=6)
+extension PrerequisiteLecture: Sendable {}
+#endif
+
+
+extension PrerequisiteLecture: Equatable, Hashable {
+    public static func ==(lhs: PrerequisiteLecture, rhs: PrerequisiteLecture) -> Bool {
+        if lhs.code != rhs.code {
+            return false
+        }
+        if lhs.name != rhs.name {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(code)
+        hasher.combine(name)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypePrerequisiteLecture: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> PrerequisiteLecture {
+        return
+            try PrerequisiteLecture(
+                code: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: PrerequisiteLecture, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.code, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePrerequisiteLecture_lift(_ buf: RustBuffer) throws -> PrerequisiteLecture {
+    return try FfiConverterTypePrerequisiteLecture.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypePrerequisiteLecture_lower(_ value: PrerequisiteLecture) -> RustBuffer {
+    return FfiConverterTypePrerequisiteLecture.lower(value)
 }
 
 
@@ -5105,6 +6190,289 @@ public func FfiConverterTypeStudentWorkInformation_lower(_ value: StudentWorkInf
 
 
 /**
+ * 핵심역량
+ */
+public struct SyllabusCompetency {
+    /**
+     * 역량명
+     */
+    public let name: String
+    /**
+     * 관련비율 (%)
+     */
+    public let rate: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * 역량명
+         */name: String, 
+        /**
+         * 관련비율 (%)
+         */rate: String) {
+        self.name = name
+        self.rate = rate
+    }
+}
+
+#if compiler(>=6)
+extension SyllabusCompetency: Sendable {}
+#endif
+
+
+extension SyllabusCompetency: Equatable, Hashable {
+    public static func ==(lhs: SyllabusCompetency, rhs: SyllabusCompetency) -> Bool {
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.rate != rhs.rate {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+        hasher.combine(rate)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSyllabusCompetency: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyllabusCompetency {
+        return
+            try SyllabusCompetency(
+                name: FfiConverterString.read(from: &buf), 
+                rate: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SyllabusCompetency, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.rate, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyllabusCompetency_lift(_ buf: RustBuffer) throws -> SyllabusCompetency {
+    return try FfiConverterTypeSyllabusCompetency.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyllabusCompetency_lower(_ value: SyllabusCompetency) -> RustBuffer {
+    return FfiConverterTypeSyllabusCompetency.lower(value)
+}
+
+
+/**
+ * 성적평가 항목
+ */
+public struct SyllabusGradingItem {
+    /**
+     * 평가항목명
+     */
+    public let name: String
+    /**
+     * 비율 (%)
+     */
+    public let rate: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * 평가항목명
+         */name: String, 
+        /**
+         * 비율 (%)
+         */rate: String) {
+        self.name = name
+        self.rate = rate
+    }
+}
+
+#if compiler(>=6)
+extension SyllabusGradingItem: Sendable {}
+#endif
+
+
+extension SyllabusGradingItem: Equatable, Hashable {
+    public static func ==(lhs: SyllabusGradingItem, rhs: SyllabusGradingItem) -> Bool {
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.rate != rhs.rate {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+        hasher.combine(rate)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSyllabusGradingItem: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyllabusGradingItem {
+        return
+            try SyllabusGradingItem(
+                name: FfiConverterString.read(from: &buf), 
+                rate: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SyllabusGradingItem, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterString.write(value.rate, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyllabusGradingItem_lift(_ buf: RustBuffer) throws -> SyllabusGradingItem {
+    return try FfiConverterTypeSyllabusGradingItem.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyllabusGradingItem_lower(_ value: SyllabusGradingItem) -> RustBuffer {
+    return FfiConverterTypeSyllabusGradingItem.lower(value)
+}
+
+
+/**
+ * 주차별 수업계획
+ */
+public struct SyllabusWeeklyPlan {
+    /**
+     * 주차
+     */
+    public let week: String
+    /**
+     * 핵심주제
+     */
+    public let topic: String
+    /**
+     * 세부내용
+     */
+    public let details: String
+    /**
+     * 수업방법
+     */
+    public let teachingMethod: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * 주차
+         */week: String, 
+        /**
+         * 핵심주제
+         */topic: String, 
+        /**
+         * 세부내용
+         */details: String, 
+        /**
+         * 수업방법
+         */teachingMethod: String) {
+        self.week = week
+        self.topic = topic
+        self.details = details
+        self.teachingMethod = teachingMethod
+    }
+}
+
+#if compiler(>=6)
+extension SyllabusWeeklyPlan: Sendable {}
+#endif
+
+
+extension SyllabusWeeklyPlan: Equatable, Hashable {
+    public static func ==(lhs: SyllabusWeeklyPlan, rhs: SyllabusWeeklyPlan) -> Bool {
+        if lhs.week != rhs.week {
+            return false
+        }
+        if lhs.topic != rhs.topic {
+            return false
+        }
+        if lhs.details != rhs.details {
+            return false
+        }
+        if lhs.teachingMethod != rhs.teachingMethod {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(week)
+        hasher.combine(topic)
+        hasher.combine(details)
+        hasher.combine(teachingMethod)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSyllabusWeeklyPlan: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SyllabusWeeklyPlan {
+        return
+            try SyllabusWeeklyPlan(
+                week: FfiConverterString.read(from: &buf), 
+                topic: FfiConverterString.read(from: &buf), 
+                details: FfiConverterString.read(from: &buf), 
+                teachingMethod: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: SyllabusWeeklyPlan, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.week, into: &buf)
+        FfiConverterString.write(value.topic, into: &buf)
+        FfiConverterString.write(value.details, into: &buf)
+        FfiConverterString.write(value.teachingMethod, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyllabusWeeklyPlan_lift(_ buf: RustBuffer) throws -> SyllabusWeeklyPlan {
+    return try FfiConverterTypeSyllabusWeeklyPlan.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeSyllabusWeeklyPlan_lower(_ value: SyllabusWeeklyPlan) -> RustBuffer {
+    return FfiConverterTypeSyllabusWeeklyPlan.lower(value)
+}
+
+
+/**
  * uniffi 지원을 위한 u32 Pair입니다.
  */
 public struct UnsignedIntPair {
@@ -6096,6 +7464,31 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeAlternativeLecture: FfiConverterRustBuffer {
+    typealias SwiftType = [AlternativeLecture]
+
+    public static func write(_ value: [AlternativeLecture], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeAlternativeLecture.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [AlternativeLecture] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [AlternativeLecture]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeAlternativeLecture.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeChapelAbsenceRequest: FfiConverterRustBuffer {
     typealias SwiftType = [ChapelAbsenceRequest]
 
@@ -6146,6 +7539,31 @@ fileprivate struct FfiConverterSequenceTypeChapelAttendance: FfiConverterRustBuf
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeClassGradeItem: FfiConverterRustBuffer {
+    typealias SwiftType = [ClassGradeItem]
+
+    public static func write(_ value: [ClassGradeItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeClassGradeItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [ClassGradeItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [ClassGradeItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeClassGradeItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeCourseScheduleInformation: FfiConverterRustBuffer {
     typealias SwiftType = [CourseScheduleInformation]
 
@@ -6163,6 +7581,56 @@ fileprivate struct FfiConverterSequenceTypeCourseScheduleInformation: FfiConvert
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeCourseScheduleInformation.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeLectureChangeHistory: FfiConverterRustBuffer {
+    typealias SwiftType = [LectureChangeHistory]
+
+    public static func write(_ value: [LectureChangeHistory], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeLectureChangeHistory.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [LectureChangeHistory] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [LectureChangeHistory]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeLectureChangeHistory.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypePrerequisiteLecture: FfiConverterRustBuffer {
+    typealias SwiftType = [PrerequisiteLecture]
+
+    public static func write(_ value: [PrerequisiteLecture], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypePrerequisiteLecture.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [PrerequisiteLecture] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [PrerequisiteLecture]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypePrerequisiteLecture.read(from: &buf))
         }
         return seq
     }
@@ -6238,6 +7706,81 @@ fileprivate struct FfiConverterSequenceTypeStudentTransferRecord: FfiConverterRu
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterTypeStudentTransferRecord.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeSyllabusCompetency: FfiConverterRustBuffer {
+    typealias SwiftType = [SyllabusCompetency]
+
+    public static func write(_ value: [SyllabusCompetency], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeSyllabusCompetency.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [SyllabusCompetency] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [SyllabusCompetency]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeSyllabusCompetency.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeSyllabusGradingItem: FfiConverterRustBuffer {
+    typealias SwiftType = [SyllabusGradingItem]
+
+    public static func write(_ value: [SyllabusGradingItem], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeSyllabusGradingItem.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [SyllabusGradingItem] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [SyllabusGradingItem]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeSyllabusGradingItem.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeSyllabusWeeklyPlan: FfiConverterRustBuffer {
+    typealias SwiftType = [SyllabusWeeklyPlan]
+
+    public static func write(_ value: [SyllabusWeeklyPlan], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeSyllabusWeeklyPlan.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [SyllabusWeeklyPlan] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [SyllabusWeeklyPlan]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeSyllabusWeeklyPlan.read(from: &buf))
         }
         return seq
     }

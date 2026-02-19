@@ -902,6 +902,11 @@ public protocol CourseGradesApplicationProtocol: AnyObject, Sendable {
     func getSelectedSemester() async throws  -> YearSemester
     
     /**
+     * 이수구분별 성적 데이터를 OZ 서버에서 가져옵니다.
+     */
+    func gradesByClassification(courseType: CourseType) async throws  -> GradesByClassification
+    
+    /**
      * 최신 정보를 조회합니다. 새로고침 시 유용합니다.
      */
     func lookup() async throws 
@@ -1057,6 +1062,26 @@ open func getSelectedSemester()async throws  -> YearSemester  {
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeYearSemester_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
+     * 이수구분별 성적 데이터를 OZ 서버에서 가져옵니다.
+     */
+open func gradesByClassification(courseType: CourseType)async throws  -> GradesByClassification  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursegradesapplication_grades_by_classification(
+                    self.uniffiClonePointer(),
+                    FfiConverterTypeCourseType_lower(courseType)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeGradesByClassification_lift,
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
@@ -1750,6 +1775,25 @@ public protocol CourseScheduleApplicationProtocol: AnyObject, Sendable {
     func graduatedDepartments(year: UInt32, semester: SemesterType, collage: String) async throws  -> [String]
     
     /**
+     * 주어진 과목번호에 해당하는 강의의 상세 정보를 가져옵니다.
+     * `find_lectures` 함수를 먼저 호출하여 강의를 검색한 이후에 사용되어야 합니다.
+     */
+    func lectureDetail(code: String) async throws  -> LectureDetail
+    
+    /**
+     * 주어진 과목번호에 해당하는 강의의 강의계획서(syllabus) 데이터를 OZ 서버에서 가져옵니다.
+     * `find_lectures` 함수를 먼저 호출하여 강의를 검색한 이후에 사용되어야 합니다.
+     * 강의계획서가 없는 강의의 경우 에러를 반환합니다.
+     */
+    func lectureSyllabus(code: String) async throws  -> LectureSyllabus
+    
+    /**
+     * 현재 페이지에 로드된 강의들을 가져옵니다. `find_lectures` 함수를 호출하여 강의를 검색한 이후에 사용되어야 하며, 검색한 강의들에 대한 추가 정보를 가져오고자 할 때 사용할 수 있습니다.
+     * NOTE: 이 함수는 스크롤을 수행하지 않으므로, find_lectures 함수가 너무 많은 강의(500줄 초과)를 반환한 경우, 예상대로 동작하지 않을 수 있습니다.
+     */
+    func loadedLectures() async throws  -> [Lecture]
+    
+    /**
      * 선택한 학과(부)의 전공 목록을 가져옵니다.
      */
     func majors(year: UInt32, semester: SemesterType, collage: String, department: String) async throws  -> [String]
@@ -1987,6 +2031,70 @@ open func graduatedDepartments(year: UInt32, semester: SemesterType, collage: St
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
+     * 주어진 과목번호에 해당하는 강의의 상세 정보를 가져옵니다.
+     * `find_lectures` 함수를 먼저 호출하여 강의를 검색한 이후에 사용되어야 합니다.
+     */
+open func lectureDetail(code: String)async throws  -> LectureDetail  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_lecture_detail(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(code)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeLectureDetail_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
+     * 주어진 과목번호에 해당하는 강의의 강의계획서(syllabus) 데이터를 OZ 서버에서 가져옵니다.
+     * `find_lectures` 함수를 먼저 호출하여 강의를 검색한 이후에 사용되어야 합니다.
+     * 강의계획서가 없는 강의의 경우 에러를 반환합니다.
+     */
+open func lectureSyllabus(code: String)async throws  -> LectureSyllabus  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_lecture_syllabus(
+                    self.uniffiClonePointer(),
+                    FfiConverterString.lower(code)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterTypeLectureSyllabus_lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
+     * 현재 페이지에 로드된 강의들을 가져옵니다. `find_lectures` 함수를 호출하여 강의를 검색한 이후에 사용되어야 하며, 검색한 강의들에 대한 추가 정보를 가져오고자 할 때 사용할 수 있습니다.
+     * NOTE: 이 함수는 스크롤을 수행하지 않으므로, find_lectures 함수가 너무 많은 강의(500줄 초과)를 반환한 경우, 예상대로 동작하지 않을 수 있습니다.
+     */
+open func loadedLectures()async throws  -> [Lecture]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_loaded_lectures(
+                    self.uniffiClonePointer()
+                    
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeLecture.lift,
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
@@ -5083,6 +5191,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_get_selected_semester() != 50223) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_grades_by_classification() != 15373) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_rusaint_ffi_checksum_method_coursegradesapplication_lookup() != 14564) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -5132,6 +5243,15 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_graduated_departments() != 42882) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_lecture_detail() != 28315) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_lecture_syllabus() != 27680) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_loaded_lectures() != 18448) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_majors() != 356) {
