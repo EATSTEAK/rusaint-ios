@@ -1754,6 +1754,14 @@ public protocol CourseScheduleApplicationProtocol: AnyObject, Sendable {
     func departments(year: UInt32, semester: SemesterType, collage: String) async throws  -> [String]
     
     /**
+     * 검색된 모든 강의의 상세 정보와 강의계획서를 함께 조회합니다.
+     * 테이블 스크롤을 자동으로 수행합니다.
+     * `fetch_syllabus`가 `true`이면 강의계획서도 함께 조회합니다.
+     * 강의계획서가 없는 강의의 경우 `syllabus` 필드가 `None`이 되며, 그 외 조회 오류는 에러로 전파됩니다.
+     */
+    func findDetailedLectures(year: UInt32, semester: SemesterType, lectureCategory: LectureCategory, fetchSyllabus: Bool) async throws  -> [DetailedLecture]
+    
+    /**
      * 학기, 학년도, 강의 분류를 통해 강의를 찾습니다.
      */
     func findLectures(year: UInt32, semester: SemesterType, lectureCategory: LectureCategory) async throws  -> [Lecture]
@@ -1950,6 +1958,29 @@ open func departments(year: UInt32, semester: SemesterType, collage: String)asyn
             completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
             freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
             liftFunc: FfiConverterSequenceString.lift,
+            errorHandler: FfiConverterTypeRusaintError_lift
+        )
+}
+    
+    /**
+     * 검색된 모든 강의의 상세 정보와 강의계획서를 함께 조회합니다.
+     * 테이블 스크롤을 자동으로 수행합니다.
+     * `fetch_syllabus`가 `true`이면 강의계획서도 함께 조회합니다.
+     * 강의계획서가 없는 강의의 경우 `syllabus` 필드가 `None`이 되며, 그 외 조회 오류는 에러로 전파됩니다.
+     */
+open func findDetailedLectures(year: UInt32, semester: SemesterType, lectureCategory: LectureCategory, fetchSyllabus: Bool)async throws  -> [DetailedLecture]  {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_rusaint_ffi_fn_method_coursescheduleapplication_find_detailed_lectures(
+                    self.uniffiClonePointer(),
+                    FfiConverterUInt32.lower(year),FfiConverterTypeSemesterType_lower(semester),FfiConverterTypeLectureCategory_lower(lectureCategory),FfiConverterBool.lower(fetchSyllabus)
+                )
+            },
+            pollFunc: ffi_rusaint_ffi_rust_future_poll_rust_buffer,
+            completeFunc: ffi_rusaint_ffi_rust_future_complete_rust_buffer,
+            freeFunc: ffi_rusaint_ffi_rust_future_free_rust_buffer,
+            liftFunc: FfiConverterSequenceTypeDetailedLecture.lift,
             errorHandler: FfiConverterTypeRusaintError_lift
         )
 }
@@ -4955,6 +4986,31 @@ fileprivate struct FfiConverterSequenceTypeClassGrade: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterSequenceTypeDetailedLecture: FfiConverterRustBuffer {
+    typealias SwiftType = [DetailedLecture]
+
+    public static func write(_ value: [DetailedLecture], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeDetailedLecture.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [DetailedLecture] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [DetailedLecture]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeDetailedLecture.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterSequenceTypeLecture: FfiConverterRustBuffer {
     typealias SwiftType = [Lecture]
 
@@ -5231,6 +5287,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_departments() != 10692) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_find_detailed_lectures() != 46573) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_rusaint_ffi_checksum_method_coursescheduleapplication_find_lectures() != 7590) {

@@ -1779,6 +1779,105 @@ public func FfiConverterTypeCourseScheduleInformation_lower(_ value: CourseSched
 
 
 /**
+ * 강의 검색 결과와 상세 정보, 강의계획서를 함께 담는 구조체
+ */
+public struct DetailedLecture {
+    /**
+     * 강의 기본 정보
+     */
+    public let lecture: Lecture
+    /**
+     * 강의 상세 정보 (상세 정보 링크가 없는 경우 `None`)
+     */
+    public let detail: LectureDetail?
+    /**
+     * 강의계획서 (조회하지 않았거나 강의계획서가 없는 강의의 경우 `None`)
+     */
+    public let syllabus: LectureSyllabus?
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(
+        /**
+         * 강의 기본 정보
+         */lecture: Lecture, 
+        /**
+         * 강의 상세 정보 (상세 정보 링크가 없는 경우 `None`)
+         */detail: LectureDetail?, 
+        /**
+         * 강의계획서 (조회하지 않았거나 강의계획서가 없는 강의의 경우 `None`)
+         */syllabus: LectureSyllabus?) {
+        self.lecture = lecture
+        self.detail = detail
+        self.syllabus = syllabus
+    }
+}
+
+#if compiler(>=6)
+extension DetailedLecture: Sendable {}
+#endif
+
+
+extension DetailedLecture: Equatable, Hashable {
+    public static func ==(lhs: DetailedLecture, rhs: DetailedLecture) -> Bool {
+        if lhs.lecture != rhs.lecture {
+            return false
+        }
+        if lhs.detail != rhs.detail {
+            return false
+        }
+        if lhs.syllabus != rhs.syllabus {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(lecture)
+        hasher.combine(detail)
+        hasher.combine(syllabus)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeDetailedLecture: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> DetailedLecture {
+        return
+            try DetailedLecture(
+                lecture: FfiConverterTypeLecture.read(from: &buf), 
+                detail: FfiConverterOptionTypeLectureDetail.read(from: &buf), 
+                syllabus: FfiConverterOptionTypeLectureSyllabus.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: DetailedLecture, into buf: inout [UInt8]) {
+        FfiConverterTypeLecture.write(value.lecture, into: &buf)
+        FfiConverterOptionTypeLectureDetail.write(value.detail, into: &buf)
+        FfiConverterOptionTypeLectureSyllabus.write(value.syllabus, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDetailedLecture_lift(_ buf: RustBuffer) throws -> DetailedLecture {
+    return try FfiConverterTypeDetailedLecture.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeDetailedLecture_lower(_ value: DetailedLecture) -> RustBuffer {
+    return FfiConverterTypeDetailedLecture.lower(value)
+}
+
+
+/**
  * 채플 기본 정보(좌석번호, 결석현황, 성적결과)
  */
 public struct GeneralChapelInformation {
@@ -7311,6 +7410,54 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterString.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeLectureDetail: FfiConverterRustBuffer {
+    typealias SwiftType = LectureDetail?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLectureDetail.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLectureDetail.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeLectureSyllabus: FfiConverterRustBuffer {
+    typealias SwiftType = LectureSyllabus?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeLectureSyllabus.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeLectureSyllabus.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
