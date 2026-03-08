@@ -3759,11 +3759,11 @@ public struct RegisteredLecture {
      */
     public let syllabus: String?
     /**
-     * 이수구분(주전공)
+     * 이수구분
      */
     public let category: String
     /**
-     * 이수구분(다전공)
+     * 다전공구분
      */
     public let subCategory: String?
     /**
@@ -3791,29 +3791,21 @@ public struct RegisteredLecture {
      */
     public let professor: String
     /**
-     * 개설학과
-     */
-    public let department: String
-    /**
      * 시간/학점(설계)
      */
     public let timePoints: String
     /**
-     * 수강인원
-     */
-    public let personeel: String
-    /**
-     * 여석
-     */
-    public let remainingSeats: String
-    /**
-     * 강의시간(강의실)
+     * 요일/시간(강의실)
      */
     public let scheduleRoom: String
     /**
-     * 수강대상
+     * 과정
      */
     public let target: String
+    /**
+     * 수강 신청일
+     */
+    public let registerDate: String
     /**
      * 비고
      */
@@ -3826,10 +3818,10 @@ public struct RegisteredLecture {
          * 계획
          */syllabus: String?, 
         /**
-         * 이수구분(주전공)
+         * 이수구분
          */category: String, 
         /**
-         * 이수구분(다전공)
+         * 다전공구분
          */subCategory: String?, 
         /**
          * 공학인증
@@ -3850,23 +3842,17 @@ public struct RegisteredLecture {
          * 교수명
          */professor: String, 
         /**
-         * 개설학과
-         */department: String, 
-        /**
          * 시간/학점(설계)
          */timePoints: String, 
         /**
-         * 수강인원
-         */personeel: String, 
-        /**
-         * 여석
-         */remainingSeats: String, 
-        /**
-         * 강의시간(강의실)
+         * 요일/시간(강의실)
          */scheduleRoom: String, 
         /**
-         * 수강대상
+         * 과정
          */target: String, 
+        /**
+         * 수강 신청일
+         */registerDate: String, 
         /**
          * 비고
          */remarks: String) {
@@ -3879,12 +3865,10 @@ public struct RegisteredLecture {
         self.name = name
         self.division = division
         self.professor = professor
-        self.department = department
         self.timePoints = timePoints
-        self.personeel = personeel
-        self.remainingSeats = remainingSeats
         self.scheduleRoom = scheduleRoom
         self.target = target
+        self.registerDate = registerDate
         self.remarks = remarks
     }
 }
@@ -3923,22 +3907,16 @@ extension RegisteredLecture: Equatable, Hashable {
         if lhs.professor != rhs.professor {
             return false
         }
-        if lhs.department != rhs.department {
-            return false
-        }
         if lhs.timePoints != rhs.timePoints {
-            return false
-        }
-        if lhs.personeel != rhs.personeel {
-            return false
-        }
-        if lhs.remainingSeats != rhs.remainingSeats {
             return false
         }
         if lhs.scheduleRoom != rhs.scheduleRoom {
             return false
         }
         if lhs.target != rhs.target {
+            return false
+        }
+        if lhs.registerDate != rhs.registerDate {
             return false
         }
         if lhs.remarks != rhs.remarks {
@@ -3957,12 +3935,10 @@ extension RegisteredLecture: Equatable, Hashable {
         hasher.combine(name)
         hasher.combine(division)
         hasher.combine(professor)
-        hasher.combine(department)
         hasher.combine(timePoints)
-        hasher.combine(personeel)
-        hasher.combine(remainingSeats)
         hasher.combine(scheduleRoom)
         hasher.combine(target)
+        hasher.combine(registerDate)
         hasher.combine(remarks)
     }
 }
@@ -3985,12 +3961,10 @@ public struct FfiConverterTypeRegisteredLecture: FfiConverterRustBuffer {
                 name: FfiConverterString.read(from: &buf), 
                 division: FfiConverterOptionString.read(from: &buf), 
                 professor: FfiConverterString.read(from: &buf), 
-                department: FfiConverterString.read(from: &buf), 
                 timePoints: FfiConverterString.read(from: &buf), 
-                personeel: FfiConverterString.read(from: &buf), 
-                remainingSeats: FfiConverterString.read(from: &buf), 
                 scheduleRoom: FfiConverterString.read(from: &buf), 
                 target: FfiConverterString.read(from: &buf), 
+                registerDate: FfiConverterString.read(from: &buf), 
                 remarks: FfiConverterString.read(from: &buf)
         )
     }
@@ -4005,12 +3979,10 @@ public struct FfiConverterTypeRegisteredLecture: FfiConverterRustBuffer {
         FfiConverterString.write(value.name, into: &buf)
         FfiConverterOptionString.write(value.division, into: &buf)
         FfiConverterString.write(value.professor, into: &buf)
-        FfiConverterString.write(value.department, into: &buf)
         FfiConverterString.write(value.timePoints, into: &buf)
-        FfiConverterString.write(value.personeel, into: &buf)
-        FfiConverterString.write(value.remainingSeats, into: &buf)
         FfiConverterString.write(value.scheduleRoom, into: &buf)
         FfiConverterString.write(value.target, into: &buf)
+        FfiConverterString.write(value.registerDate, into: &buf)
         FfiConverterString.write(value.remarks, into: &buf)
     }
 }
